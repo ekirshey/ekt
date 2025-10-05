@@ -22,15 +22,15 @@ def populate_str(var_dict, tofill):
         else:
             raise InvalidTemplateVariableType(tofill)
 
-def parse(input, var_dict):
+def parse(var_dict, input):
     str_parts = [
         StrPart(0, len(input), False)
     ]
-    template_start = input.find(template_start)
-    while template_start != -1:
-        template_start += str_parts[-1].start
-        str_parts[-1].end = template_start
-        first_char_idx = template_start + len(template_start)
+    template_start_idx = input.find(template_start)
+    while template_start_idx != -1:
+        template_start_idx += str_parts[-1].start
+        str_parts[-1].end = template_start_idx
+        first_char_idx = template_start_idx + len(template_start)
         last_char_idx = -1
         str_len = len(input) - first_char_idx
         for i,c in enumerate(input[first_char_idx:]):
@@ -48,7 +48,7 @@ def parse(input, var_dict):
         if last_char_idx == -1:
             raise PoorlyFormedTemplateVariable()
         
-        template_start = input[str_parts[-1].start:].find(template_start)
+        template_start_idx = input[str_parts[-1].start:].find(template_start)
     
     new_str = ""
     for p in str_parts:
