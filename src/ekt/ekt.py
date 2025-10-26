@@ -2,6 +2,7 @@ from .exceptions import *
 from .parser import parse
 import subprocess
 import argparse
+import os
 
 class EktTemplateComponent:
     def __init__(self, input, output):
@@ -27,13 +28,18 @@ class Ekt:
         self.name = name
         self.context = {}
         self.templates = {}
-    
+
     def run_post_command(self, post_command):
         command = post_command.command
         cwd = post_command.cwd
         print(f"Running command: {command}")
+        shell = "powershell"
+        command_arg = "-Command"
+        if os.name != "nt":
+            shell = "zsh"
+            command_arg = "-c"
         result = subprocess.run(
-            ["powershell", "-Command", command],
+            [shell, command_arg, command],
             cwd=cwd,
             capture_output=True,
             text=True
@@ -46,12 +52,12 @@ class Ekt:
     def process_template(self, template_name):
         if template_name not in self.templates:
             raise InvalidTemplate(template_name)
-        
+
         active_template = self.templates[template_name]
 
         for user_input in active_template.user_input:
             self.context[user_input] = parse(self.context, input(f"{user_input}:  "))
-        
+
         for key, value in active_template.template_context.items():
             self.context[key] = parse(self.context,value)
 
@@ -61,7 +67,7 @@ class Ekt:
             with open(parsed_input_file, "r") as file:
                 input_content = file.read()
                 new_content = parse(self.context, input_content)
-            
+
             parsed_output_file = parse(self.context, component.output)
             with open(parsed_output_file, "w") as file:
                 print(f"Writing resolved content to {parsed_output_file}")
@@ -90,5 +96,5 @@ class Ekt:
             template_list = "\n".join(self.templates)
             print(f"Available templates:\n{template_list}")
             return
-        
+
         self.process_template(args.template_name)
