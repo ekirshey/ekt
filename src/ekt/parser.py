@@ -3,29 +3,22 @@ from .exceptions import *
 template_start = "![["
 template_end = "]]"
 
+class ParsedOutput:
+    def __init__(self, str_parts, variables):
+        self.str_parts = str_parts
+        self.variables = variables
+
 class StrPart:
     def __init__(self, start, end, template):
         self.start = start
         self.end = end
         self.template = template
 
-def populate_str(var_dict, tofill):
-        key = tofill.lower()
-        if key not in var_dict:
-            raise TemplateVariableNotFound(tofill)
-        
-        val = var_dict[key]
-        if isinstance(val, str):
-            return val
-        elif callable(val):
-            return val(var_dict)
-        else:
-            raise InvalidTemplateVariableType(tofill)
-
-def parse(var_dict, input):
+def parse(input):
     str_parts = [
         StrPart(0, len(input), False)
     ]
+    variables = []
     template_start_idx = input.find(template_start)
     while template_start_idx != -1:
         template_start_idx += str_parts[-1].start
@@ -43,18 +36,12 @@ def parse(var_dict, input):
                 last_char_idx = j
                 str_parts.append(StrPart(first_char_idx, last_char_idx, True))
                 str_parts.append(StrPart(j+2, len(input), False))
+                variables.append(input[first_char_idx:last_char_idx].lower())
                 break
         
         if last_char_idx == -1:
             raise PoorlyFormedTemplateVariable()
         
         template_start_idx = input[str_parts[-1].start:].find(template_start)
-    
-    new_str = ""
-    for p in str_parts:
-        if p.template:
-            new_str += populate_str(var_dict, input[p.start:p.end])
-        else:
-            new_str += input[p.start:p.end]
-
-    return new_str
+ 
+    return ParsedOutput(str_parts, variables)

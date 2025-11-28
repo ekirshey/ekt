@@ -1,8 +1,35 @@
 from .exceptions import *
-from .parser import parse
+from .parser import parse, ParsedOutput
 import subprocess
 import argparse
 import os
+
+def resolve_variable(var_dict, tofill):
+    key = tofill.lower()
+    if key not in var_dict:
+        raise TemplateVariableNotFound(tofill)
+    
+    val = var_dict[key]
+    if isinstance(val, str):
+        return val
+    elif callable(val):
+        return val(var_dict)
+    else:
+        raise InvalidTemplateVariableType(tofill)
+
+def resolve_parsed(raw_input, parsed_input, var_dict):
+    new_str = ""
+    for p in parsed_input.str_parts:
+        if p.template:
+            new_str += resolve_variable(var_dict, raw_input[p.start:p.end])
+        else:
+            new_str += raw_input[p.start:p.end]
+
+    return new_str
+
+def resolve_raw(input, var_dict):
+    parsed_input = parse(input)
+    return resolve_parsed(input, parsed_input, var_dict)
 
 class EktTemplateComponent:
     def __init__(self, input, output):
@@ -26,7 +53,7 @@ class EktTemplate:
 class Ekt:
     def __init__(self, name):
         self.name = name
-        self.context = {}
+        self.global_context = {}
         self.templates = {}
 
     def run_post_command(self, post_command):
@@ -49,26 +76,49 @@ class Ekt:
         elif post_command.print_stdout:
             print(result.stdout)
 
+    def preprocess_components(self, active_template, context):
+        parsed_components = []
+        # Parse components to find variables
+        for component in active_template.components:
+            parsed_input_file = resolve_raw(component.input, context)
+            with open(parsed_input_file, "r") as file:
+                input_content = file.read()
+                parsed_input = parse(input_content)
+                parsed_components.append({
+                    "input": input_content,
+                    "parsed_input": parsed_input 
+                })
+
+                for v in parsed_input.variables:
+                    if v in active_template.user_input:
+                        continue 
+                    if v not in context and v not in active_template.template_context:
+                        active_template.user_input.append(v)
+
+        return parsed_components
+
+
     def process_template(self, template_name):
         if template_name not in self.templates:
             raise InvalidTemplate(template_name)
 
         active_template = self.templates[template_name]
 
+        context = {}
+        context.update(self.global_context)
+
+        parsed_components = self.preprocess_components(active_template, context)
+
         for user_input in active_template.user_input:
-            self.context[user_input] = parse(self.context, input(f"{user_input}:  "))
+            context[user_input] = input(f"{user_input}:  ")
 
         for key, value in active_template.template_context.items():
-            self.context[key] = parse(self.context,value)
+            context[key] = resolve_raw(value, context)
 
-        for component in active_template.components:
-            new_content = ""
-            parsed_input_file = parse(self.context, component.input)
-            with open(parsed_input_file, "r") as file:
-                input_content = file.read()
-                new_content = parse(self.context, input_content)
+        for i, component in enumerate(active_template.components):
+            new_content = resolve_parsed(parsed_components[i]["input"], parsed_components[i]["parsed_input"], context)
 
-            parsed_output_file = parse(self.context, component.output)
+            parsed_output_file = resolve_raw(component.output, context)
             with open(parsed_output_file, "w") as file:
                 print(f"Writing resolved content to {parsed_output_file}")
                 file.write(new_content)
@@ -81,7 +131,7 @@ class Ekt:
 
     def set_global_context(self, context):
         for key, item in context.items():
-            self.context[key.lower()] = item
+            self.global_context[key.lower()] = item
 
     def add_template(self, name, template):
         self.templates[name] = template
