@@ -1,0 +1,14 @@
+This is an example of a very cool template file
+
+![[global_result]]
+![[user_input]]
+A default here: ![[has_default]]
+Empty line here: ![[no_default]]
+
+Result of a function:
+![[function_result]]
+![[function_result_with_context]]
+![[function_result_with_missing_context]]
+
+
+![[file_list]]

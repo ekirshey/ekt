@@ -1,0 +1,24 @@
+This is an example of a very cool template file
+
+global_value
+a default user input
+A default here: a default
+Empty line here: 
+
+Result of a function:
+a function result
+a result global_value
+missing context
+
+
+src/ParsedTemplateString.cpp
+src/ParsedTemplateString.h
+src/string_hash.h
+src/lua_interface.cpp
+src/Context.h
+src/main.cpp
+src/Template.h
+src/Ekt.h
+src/Ekt.cpp
+src/lua_interface.h
+src/utils.h

@@ -1,0 +1,8 @@
+{
+  "name": "eklt",
+  "version": "0.1.0",
+  "dependencies": [
+    "luajit",
+    "sol2"
+  ]
+}
