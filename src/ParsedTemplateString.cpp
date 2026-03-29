@@ -9,9 +9,9 @@ namespace
     const std::string template_end = "]]";
 }
 
-ParsedTemplateString::Result ParsedTemplateString::parse(std::string* content)
+ParsedTemplateString::Result ParsedTemplateString::parse(const std::string& content)
 {
-    if (content == nullptr)
+    if (content.empty())
     {
         return std::unexpected(false);
     }
@@ -19,15 +19,15 @@ ParsedTemplateString::Result ParsedTemplateString::parse(std::string* content)
     res.m_content = content;
 
     std::size_t pos = 0;
-    while ((pos = content->find(template_start, pos)) != std::string::npos)
+    while ((pos = content.find(template_start, pos)) != std::string::npos)
     {
-        std::size_t end = content->find(template_end, pos);
+        std::size_t end = content.find(template_end, pos);
         if (end == std::string::npos)
         {
             break;
         }
 
-        std::string inner = content->substr(
+        std::string inner = content.substr(
             pos + template_start.length(),
             end - pos - template_start.length());
 
@@ -45,7 +45,7 @@ std::string ParsedTemplateString::resolve(const Context& context) const
 {
     if(m_variableLocations.size() == 0)
     {
-        return *m_content;
+        return m_content;
     }
 
     std::string result;
@@ -53,7 +53,7 @@ std::string ParsedTemplateString::resolve(const Context& context) const
     int idx = 0;
     for(const auto& loc : m_variableLocations)
     {
-        result += m_content->substr(idx, loc.start - idx);
+        result += m_content.substr(idx, loc.start - idx);
         const auto& it = context.data.find(get_variable(loc));
         if (it != context.data.end())
         {
@@ -63,9 +63,9 @@ std::string ParsedTemplateString::resolve(const Context& context) const
         idx = loc.end;
     }
 
-    if (idx < m_content->size())
+    if (idx < m_content.size())
     {
-        result += m_content->substr(idx, m_content->size()- idx);
+        result += m_content.substr(idx, m_content.size()- idx);
     }
 
     return result;
@@ -80,5 +80,5 @@ std::string_view ParsedTemplateString::get_variable(const VariableLocation& loca
 {
     const int start = location.start + template_start.length();
     const int length = location.end - template_end.length() - start;
-    return std::string_view(m_content->data() + start, length);
+    return std::string_view(m_content.data() + start, length);
 }

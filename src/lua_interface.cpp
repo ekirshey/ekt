@@ -13,6 +13,7 @@ namespace fs = std::filesystem;
 namespace
 {
     sol::state lua;
+    fs::path current_script;
 
     const char* root_table = "ekt";
     const char* entry_point = "build";
@@ -20,9 +21,11 @@ namespace
     // EKT Interface
     const char* add_template = "add_template";
     const char* get_filenames = "get_filenames";
+    const char* get_script_dir = "get_script_dir";
 
     // Template Interface
-    const char*  add_key_value = "add_key_value";
+    const char* add_component = "add_component";
+    const char* add_key_value = "add_key_value";
     const char* add_user_input_var = "add_user_input_var";
     const char* add_function_var = "add_function_var";
     const char* add_post_command = "add_post_command";
@@ -59,7 +62,7 @@ void LuaInterface::build(Ekt& ekt)
             ekt.add_template(name, ekt_template);
         };
 
-    ekt_table["get_filenames"] = [](const std::string& path, std::vector<std::string> extensions) -> std::string
+    ekt_table[get_filenames] = [](const std::string& path, std::vector<std::string> extensions) -> std::string
         {
             if (path.size() == 0)
             {
@@ -86,6 +89,12 @@ void LuaInterface::build(Ekt& ekt)
             return result;
         };
 
+    ekt_table[get_script_dir] = []()
+        {
+            fs::path path(current_script);
+            return path.parent_path().string();
+        };
+
     lua.new_usertype<Context>("Context",
         sol::no_constructor,
         "get", [](const Context& context, const std::string& key) -> std::optional<std::string>
@@ -101,8 +110,14 @@ void LuaInterface::build(Ekt& ekt)
 
     lua.new_usertype<Template>("Template",
         sol::constructors<Template()>(),
-        "input_file",  &Template::input_file,
-        "output_file", &Template::output_file,
+
+        add_component, [](Template& t, const std::string& input_file, const std::string& output_file)
+        {
+            t.components.push_back({
+                .input_file = input_file,
+                .output_file = output_file
+            });
+        },
 
         add_key_value, [](Template& t, const std::string& key, const std::string& value)
         {
@@ -153,5 +168,9 @@ bool LuaInterface::load_script_file(const std::filesystem::path& script, std::st
         return false;
     }
 
-    return execute(error);
+    current_script = script;
+    auto result = execute(error);
+    current_script.clear();
+
+    return result;
 }

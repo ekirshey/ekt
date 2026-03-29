@@ -16,16 +16,16 @@ public:
         uint64_t end;
     };
 
+    ParsedTemplateString() = default;
+
     using Result = std::expected<ParsedTemplateString, bool>;
-    static Result parse(std::string* content);
+    static Result parse(const std::string& content);
     std::string resolve(const Context& context) const;
 
     const std::vector<VariableLocation>& variables() const;
     std::string_view get_variable(const VariableLocation& location) const;
 
 private:
-    ParsedTemplateString() = default;
-
-    std::string* m_content;
+    std::string m_content;
     std::vector<VariableLocation> m_variableLocations;
 };

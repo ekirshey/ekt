@@ -14,10 +14,15 @@ struct TemplateInputVariable
     std::string default_value;
 };
 
-struct Template
+struct TemplateComponent
 {
     std::string input_file;
     std::string output_file;
+};
+
+struct Template
+{
+    std::vector<TemplateComponent> components;
     std::vector<TemplateInputVariable> user_input;
     Context context;
     TemplateFunction functions;

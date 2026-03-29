@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(eklt CXX)
+project(ekt CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -9,17 +9,19 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(LuaJIT REQUIRED IMPORTED_TARGET luajit)
 find_path(SOL2_INCLUDE_DIRS "sol/abort.hpp")
 
-add_executable(eklt
+add_executable(ekt
     src/main.cpp
     src/lua_interface.cpp
     src/Ekt.cpp
+    src/Config.cpp
+    src/CommandLine.cpp
     src/ParsedTemplateString.cpp
 )
 
-target_link_libraries(eklt PRIVATE
+target_link_libraries(ekt PRIVATE
     PkgConfig::LuaJIT
 )
 
-target_include_directories(eklt PUBLIC
+target_include_directories(ekt PUBLIC
     ${SOL2_INCLUDE_DIRS}
 )

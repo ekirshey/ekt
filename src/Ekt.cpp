@@ -2,6 +2,8 @@
 #include <iostream>
 #include <fstream>
 #include <ranges>
+#include "ParsedTemplateString.h"
+#include "Template.h"
 #include "utils.h"
 #include "sol/sol.hpp"
 
@@ -34,13 +36,7 @@ namespace
     std::string get_user_input()
     {
         std::string line;
-        while (std::getline(std::cin, line))
-        {
-            if (line.empty())
-            {
-                break;
-            }
-        }
+        std::getline(std::cin, line);
 
         return line;
     }
@@ -64,6 +60,30 @@ namespace
         int status = pclose(pipe);
         return {WEXITSTATUS(status), output};
     }
+
+    struct ParsedTemplateComponent
+    {
+        ParsedTemplateString input;
+        ParsedTemplateString output_file;
+    };
+
+    bool create_parsed_component(TemplateComponent& component, ParsedTemplateComponent& p)
+    {
+        std::string file_contents;
+        if(!get_input_file_content(component.input_file, file_contents))
+        {
+            std::cerr << "Could not open input file: " << component.input_file;
+            return false;
+        }
+
+        TRY_UNWRAP(input, ParsedTemplateString::parse(file_contents));
+        TRY_UNWRAP(output_file, ParsedTemplateString::parse(component.output_file));
+
+        p.input = input;
+        p.output_file = output_file;
+
+        return true;
+    }
 }
 
 void Ekt::add_template(const std::string& name, const Template& ekt_template)
@@ -80,26 +100,33 @@ bool Ekt::resolve_template(const std::string& template_name)
     }
 
     auto& selected_template = m_templates[template_name];
-    std::string file_contents;
-    if(!get_input_file_content(selected_template.input_file, file_contents))
-    {
-        std::cerr << "Could not open input file: " << selected_template.input_file;
-        return false;
-    }
 
     Context context;
     context = selected_template.context;
     context.data.insert(m_global_context.begin(), m_global_context.end());
 
-    TRY_UNWRAP(parsed_output_filename, ParsedTemplateString::parse(&selected_template.output_file));
-    TRY_UNWRAP(parsed_template, ParsedTemplateString::parse(&file_contents));
+    std::vector<ParsedTemplateComponent> parsed_components;
+    parsed_components.resize(selected_template.components.size());
+
+    int i = 0;
+    for(auto& c : selected_template.components)
+    {
+        if(!create_parsed_component(c, parsed_components[i++]))
+        {
+            std::cerr << "Failed to parse component: " << c.input_file << " : " << c.output_file << "\n";
+            return false;
+        }
+    }
 
     // Get explicit user input variables
     get_user_input_variables(context, selected_template);
 
-    // Prompt users for any remaining variable names in output file and template
-    get_missing_variables(context, selected_template, parsed_output_filename);
-    get_missing_variables(context, selected_template, parsed_template);
+    for(auto& p : parsed_components)
+    {
+        // Prompt users for any remaining variable names in output file and template
+        get_missing_variables(context, selected_template, p.output_file);
+        get_missing_variables(context, selected_template, p.input);
+    }
 
     // Resolve commands
     if(!resolve_functions(context, selected_template))
@@ -107,10 +134,13 @@ bool Ekt::resolve_template(const std::string& template_name)
         return false;
     }
 
-    std::string outputfile = parsed_output_filename.resolve(context);
-    std::string content = parsed_template.resolve(context);
-
-    std::ofstream(outputfile) << content;
+    for(auto& p : parsed_components)
+    {
+        std::string outputfile = p.output_file.resolve(context);
+        std::string content = p.input.resolve(context);
+        std::cout << outputfile << std::endl;
+        std::ofstream(outputfile) << content;
+    }
 
     if(!run_post_commands(selected_template))
     {
