@@ -1,5 +1,6 @@
 -- Globals
 local app_root = "."
+local dir = ""
 
 function example_function(context)
     return "a function result"
@@ -27,32 +28,24 @@ function get_files(context)
     return ekt.get_filenames(context:get("src_path"), { ".h", ".cpp" })
 end
 
+function get_internal_files(context)
+    local f = ekt.get_filenames(dir .. "/src", { ".h", ".cpp" })
+    print("files " .. f)
+    return f
+end
+
 -- Build function
 function ekt.build()
-    local chain = Template.new()
-    chain.input_file = "test/test_templates/chained.ekt"
-    chain.output_file = app_root .. "/test/output/chain.txt"
-    chain:add_user_input_var("some shit")
-    ekt.add_template("chain", chain);
+    dir = ekt.get_script_dir()
+    local os = ekt.get_platform()
+    local cmake_preset = "win" --get_cmake_preset(os)
 
+    ekt.add_global_var("generate_warning", "This file is generated, do not modify")
+    ekt.add_global_var("author", "Erik Kirshey")
 
-    local simple = Template.new()
-    simple.input_file = "test/test_templates/simple.ekt"
-    simple.output_file = app_root .. "/test/output/![[filename]].txt"
-    simple:add_key_value("filename", "simple_test")
-    simple:add_key_value("global_result", "global_value")
-    simple:add_key_value("src_path", app_root .. "/src")
-
-    simple:add_user_input_var("user_input", "a default user input")
-    simple:add_user_input_var("has_default", "a default")
-    simple:add_user_input_var("no_default")
-
-    simple:add_function_var("function_result", example_function)
-    simple:add_function_var("function_result_with_context", example_function_with_context)
-    simple:add_function_var("function_result_with_missing_context", example_function_with_missing_context)
-    simple:add_function_var("file_list", get_files)
-
-    simple:add_chained_template("chain")
-
-    ekt.add_template("simple", simple);
+    local app_cmake = Template.new()
+    app_cmake:add_component(dir .. "/test_templates/AppCMakeListsTemplate.ekt", dir .. "/CMakeLists.txt")
+    app_cmake:add_post_command("cmake --preset=" .. cmake_preset)
+    app_cmake:add_function_var("internal_source_files", get_internal_files)
+    ekt.add_template("app_cmake", app_cmake)
 end

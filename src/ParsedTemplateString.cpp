@@ -54,10 +54,10 @@ std::string ParsedTemplateString::resolve(const Context& context) const
     for(const auto& loc : m_variableLocations)
     {
         result += m_content.substr(idx, loc.start - idx);
-        const auto& it = context.data.find(get_variable(loc));
-        if (it != context.data.end())
+        auto var = get_variable(loc);
+        if (context.contains(var))
         {
-            result += it->second;
+            result += context.get(std::string(var));
         }
 
         idx = loc.end;

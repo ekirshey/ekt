@@ -1,4 +1,5 @@
 #include "Config.h"
+#include <filesystem>
 #include <iostream>
 
 #ifdef _WIN32
@@ -37,7 +38,7 @@ namespace
         }
         return fs::path(".");
 
-    #else // Linux, BSD, etc.
+    #else
         if (auto* xdg = std::getenv("XDG_CONFIG_HOME"))
         {
             return fs::path(xdg) / app_name;
@@ -51,19 +52,25 @@ namespace
         return fs::path(".");
     #endif
     }
+
+    void search_directory(const fs::path& path, std::vector<fs::path>& scripts)
+    {
+        for (const auto& entry : fs::recursive_directory_iterator(path))
+        {
+            if (entry.is_regular_file() && entry.path().string().ends_with(LuaInterface::script_ext))
+            {
+                scripts.push_back(entry);
+            }
+        }
+    }
 }
 
 std::vector<fs::path> Config::find_scripts()
 {
     std::vector<fs::path> scripts;
     auto config_dir = get_config_dir("ekt");
-    for (const auto& entry : fs::directory_iterator(config_dir))
-    {
-        if (entry.is_regular_file() && entry.path().string().ends_with(LuaInterface::script_ext))
-        {
-            scripts.push_back(entry);
-        }
-    }
+    search_directory(config_dir, scripts);
+    search_directory(fs::current_path(), scripts);
 
     return scripts;
 }

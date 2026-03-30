@@ -14,7 +14,10 @@ add_executable(ekt
     src/lua_interface.cpp
     src/Ekt.cpp
     src/Config.cpp
+    src/Context.cpp
     src/CommandLine.cpp
+    src/Template.cpp
+    src/utils.cpp
     src/ParsedTemplateString.cpp
 )
 

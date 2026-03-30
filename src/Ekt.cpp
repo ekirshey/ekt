@@ -4,6 +4,7 @@
 #include <ranges>
 #include "ParsedTemplateString.h"
 #include "Template.h"
+#include "lua_interface.h"
 #include "utils.h"
 #include "sol/sol.hpp"
 
@@ -72,7 +73,7 @@ namespace
         std::string file_contents;
         if(!get_input_file_content(component.input_file, file_contents))
         {
-            std::cerr << "Could not open input file: " << component.input_file;
+            std::cerr << "Could not open input file: " << component.input_file << "\n";
             return false;
         }
 
@@ -91,6 +92,11 @@ void Ekt::add_template(const std::string& name, const Template& ekt_template)
     m_templates.insert({name, ekt_template});
 }
 
+void Ekt::add_global_var(const std::string& key, const std::string& value)
+{
+    m_global_context.insert(key, value);
+}
+
 bool Ekt::resolve_template(const std::string& template_name)
 {
     if (!m_templates.contains(template_name))
@@ -103,7 +109,7 @@ bool Ekt::resolve_template(const std::string& template_name)
 
     Context context;
     context = selected_template.context;
-    context.data.insert(m_global_context.begin(), m_global_context.end());
+    context.insert(m_global_context);
 
     std::vector<ParsedTemplateComponent> parsed_components;
     parsed_components.resize(selected_template.components.size());
@@ -134,17 +140,13 @@ bool Ekt::resolve_template(const std::string& template_name)
         return false;
     }
 
+    std::cout << "Writing to: \n";
     for(auto& p : parsed_components)
     {
         std::string outputfile = p.output_file.resolve(context);
         std::string content = p.input.resolve(context);
-        std::cout << outputfile << std::endl;
+        std::cout << outputfile << "\n";
         std::ofstream(outputfile) << content;
-    }
-
-    if(!run_post_commands(selected_template))
-    {
-        return false;
     }
 
     for(auto& t : selected_template.chained_templates)
@@ -153,6 +155,12 @@ bool Ekt::resolve_template(const std::string& template_name)
         {
             return false;
         }
+    }
+
+    // Run post commands after chained template
+    if(!run_post_commands(selected_template))
+    {
+        return false;
     }
 
     return true;
@@ -181,7 +189,7 @@ void Ekt::get_user_input_variables(Context& context, const Template& selected_te
         {
             value = user_input.default_value;
         }
-        context.data.insert({user_input.name, value});
+        context.insert(user_input.name, value);
     }
 }
 
@@ -190,8 +198,8 @@ void Ekt::get_missing_variables(Context& context, const Template& selected_templ
     const auto& found_variables = parsed_template.variables();
     for(const auto& loc : found_variables)
     {
-        const auto& v = parsed_template.get_variable(loc);
-        if (context.data.contains(v) || selected_template.functions.contains(v))
+        const auto& v = to_upper(std::string(parsed_template.get_variable(loc)));
+        if (context.contains(v) || selected_template.functions.contains(v))
         {
             continue;
         }
@@ -200,7 +208,7 @@ void Ekt::get_missing_variables(Context& context, const Template& selected_templ
         // TODO: maybe sanitize?s
         std::cout << v << ": ";
         std::string value = get_user_input();
-        context.data.insert({std::string(v), value});
+        context.insert(std::string(v), value);
     }
 }
 
@@ -208,22 +216,14 @@ bool Ekt::resolve_functions(Context& context, const Template& selected_template)
 {
     for(auto& [k,v] : selected_template.functions)
     {
-        //TODO: Move this into the interface
-        auto result = v(context);
-        if (!result.valid())
+        auto result = LuaInterface::run_template_function(context, v);
+        if (!result.has_value())
         {
-            sol::error err = result;
-            std::cerr << "Lua error: " << err.what() << '\n';
+            std::cerr << result.error() << "\n";
             return false;
         }
 
-        sol::object ret = result;
-        if (ret.get_type() != sol::type::string) {
-            std::cerr << "callback must return a string\n";
-            return false;
-        }
-
-        context.data[k] = ret.as<std::string>();
+        context.insert(k, result.value());
     }
 
     return true;
@@ -233,6 +233,7 @@ bool Ekt::run_post_commands(const Template& selected_template)
 {
     for(auto& cmd : selected_template.post_commands)
     {
+        std::cout << "\nRunning command: \n " << cmd << "\n";
         auto [res, output] = execute_command(cmd);
         if (res < 0)
         {

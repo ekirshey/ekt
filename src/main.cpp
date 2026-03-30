@@ -32,7 +32,7 @@ int main(int argc, char* argv[])
 
     if (args.chosen_template.empty() || !ekt.template_exists(args.chosen_template))
     {
-        std::cout << "No valid template provided. \nAvailable templates are: \n";
+        std::cout << "No valid template provided. \n\nAvailable templates are: \n";
         for(auto& name : ekt.available_templates())
         {
             std::cout << name << std::endl;

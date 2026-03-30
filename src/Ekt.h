@@ -13,6 +13,7 @@ class Ekt
 {
 public:
     void add_template(const std::string& name, const Template& ekt_template);
+    void add_global_var(const std::string& key, const std::string& value);
     bool resolve_template(const std::string& template_name);
     bool template_exists(const std::string& template_name);
     std::vector<std::string> available_templates();
@@ -23,5 +24,5 @@ private:
     bool run_post_commands(const Template& selected_template);
 
     std::unordered_map<std::string, Template> m_templates;
-    std::unordered_map<std::string, std::string> m_global_context;
+    Context m_global_context;
 };

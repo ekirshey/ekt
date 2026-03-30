@@ -1,12 +1,16 @@
 #include "lua_interface.h"
 
+#include <expected>
 #include <filesystem>
 #include <unordered_set>
+#include <algorithm>
+#include <cctype>
 
 #include "sol/sol.hpp"
 #include "Template.h"
 #include "Context.h"
 #include "lua_interface.h"
+#include "utils.h"
 
 namespace fs = std::filesystem;
 
@@ -20,8 +24,10 @@ namespace
 
     // EKT Interface
     const char* add_template = "add_template";
+    const char* add_global_var = "add_global_var";
     const char* get_filenames = "get_filenames";
     const char* get_script_dir = "get_script_dir";
+    const char* get_platform = "get_platform";
 
     // Template Interface
     const char* add_component = "add_component";
@@ -49,7 +55,6 @@ namespace
 
         return true;
     }
-
 }
 
 void LuaInterface::build(Ekt& ekt)
@@ -57,9 +62,14 @@ void LuaInterface::build(Ekt& ekt)
     lua.open_libraries(sol::lib::base);
 
     sol::table ekt_table = lua.create_named_table(root_table);
-    ekt_table[add_template] = [&ekt](std::string name, const Template& ekt_template)
+    ekt_table[add_template] = [&ekt](const std::string& name, const Template& ekt_template)
         {
             ekt.add_template(name, ekt_template);
+        };
+
+    ekt_table[add_global_var] = [&ekt](const std::string& key, const std::string& value)
+        {
+            ekt.add_global_var(key, value);
         };
 
     ekt_table[get_filenames] = [](const std::string& path, std::vector<std::string> extensions) -> std::string
@@ -71,6 +81,12 @@ void LuaInterface::build(Ekt& ekt)
 
             std::unordered_set<std::string> exts(extensions.begin(), extensions.end());
             fs::path start(path);
+
+            if(!fs::exists(start))
+            {
+                std::cerr << "Invalid path provided to ekt.get_filenames: " << start << "\n";
+                return "";
+            }
 
             std::string result;
             for (const auto& entry : fs::recursive_directory_iterator(start))
@@ -95,16 +111,31 @@ void LuaInterface::build(Ekt& ekt)
             return path.parent_path().string();
         };
 
+    ekt_table[get_platform] = []()
+        {
+            #ifdef _WIN32
+            return "win";
+            #elif defined(__APPLE__)
+            return "mac";
+            #else
+            return "linux";
+            #endif
+        };
+
     lua.new_usertype<Context>("Context",
         sol::no_constructor,
         "get", [](const Context& context, const std::string& key) -> std::optional<std::string>
         {
-             auto it = context.data.find(key);
-             if (it == context.data.end())
-             {
-                 return std::nullopt;
-             }
-             return it->second;
+            if (!context.contains(key))
+            {
+                return std::nullopt;
+            }
+            auto value = context.get(key);
+            if (value.size() == 0)
+            {
+                return std::nullopt;
+            }
+            return value;
          }
     );
 
@@ -113,6 +144,7 @@ void LuaInterface::build(Ekt& ekt)
 
         add_component, [](Template& t, const std::string& input_file, const std::string& output_file)
         {
+            //TODO I don't want to uppercase the whole output, just the variables, if any
             t.components.push_back({
                 .input_file = input_file,
                 .output_file = output_file
@@ -121,13 +153,13 @@ void LuaInterface::build(Ekt& ekt)
 
         add_key_value, [](Template& t, const std::string& key, const std::string& value)
         {
-            t.context.data[key] = value;
+            t.context.insert(key, value);
         },
 
         add_user_input_var, [](Template& t, const std::string& key, const std::string& default_value)
         {
             TemplateInputVariable input;
-            input.name = key;
+            input.name = to_upper(key);
             if (!default_value.empty())
             {
                 input.default_value = default_value;
@@ -137,7 +169,7 @@ void LuaInterface::build(Ekt& ekt)
 
         add_function_var, [](Template& t, const std::string& key, sol::protected_function command)
         {
-            t.functions[key] = command;
+            t.functions[to_upper(key)] = command;
         },
 
         add_post_command, [](Template& t, const std::string& command)
@@ -173,4 +205,23 @@ bool LuaInterface::load_script_file(const std::filesystem::path& script, std::st
     current_script.clear();
 
     return result;
+}
+
+std::expected<std::string, std::string>
+LuaInterface::run_template_function(Context& context, const sol::protected_function& func)
+{
+    auto result = func(context);
+    if (!result.valid())
+    {
+        sol::error err = result;
+        return std::unexpected(err.what());
+    }
+
+    sol::object ret = result;
+    if (ret.get_type() != sol::type::string)
+    {
+        return std::unexpected("callback must return a string\n");
+    }
+
+    return ret.as<std::string>();
 }

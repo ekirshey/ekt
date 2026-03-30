@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 #include "Context.h"
-#include "sol/forward.hpp"
+#include "sol/sol.hpp"
 #include "string_hash.h"
 
 using TemplateFunction = std::unordered_map<std::string, sol::protected_function, string_hash, std::equal_to<>>;
