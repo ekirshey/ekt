@@ -3,12 +3,7 @@
 
 bool Context::contains(const std::string& key) const
 {
-    return m_data.contains(to_upper(key));
-}
-
-bool Context::contains(const std::string_view& key) const
-{
-    return m_data.contains(to_upper(std::string(key)));
+    return m_data.contains(key);
 }
 
 void Context::insert(const Context& context)
@@ -26,5 +21,5 @@ void Context::insert(const std::string& key, const std::string& value)
 
 std::string Context::get(const std::string& key) const
 {
-    return m_data.at(to_upper(key));
+    return m_data.at(key);
 }

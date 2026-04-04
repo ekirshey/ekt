@@ -1,7 +1,9 @@
 #include <expected>
 #include <string>
+#include <iostream>
 
 #include "ParsedTemplateString.h"
+#include "utils.h"
 
 namespace
 {
@@ -57,7 +59,7 @@ std::string ParsedTemplateString::resolve(const Context& context) const
         auto var = get_variable(loc);
         if (context.contains(var))
         {
-            result += context.get(std::string(var));
+            result += context.get(var);
         }
 
         idx = loc.end;
@@ -76,9 +78,9 @@ const std::vector<ParsedTemplateString::VariableLocation>& ParsedTemplateString:
     return m_variableLocations;
 }
 
-std::string_view ParsedTemplateString::get_variable(const VariableLocation& location) const
+std::string ParsedTemplateString::get_variable(const VariableLocation& location) const
 {
     const int start = location.start + template_start.length();
     const int length = location.end - template_end.length() - start;
-    return std::string_view(m_content.data() + start, length);
+    return to_upper(std::string(m_content.data() + start, length));
 }

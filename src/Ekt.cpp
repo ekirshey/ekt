@@ -134,6 +134,15 @@ bool Ekt::resolve_template(const std::string& template_name)
         get_missing_variables(context, selected_template, p.input);
     }
 
+    std::vector<ParsedTemplateString> parsed_cmds;
+    // Allows for variables in post commands
+    for(auto& cmd : selected_template.post_commands)
+    {
+        TRY_UNWRAP(parsed_cmd, ParsedTemplateString::parse(cmd));
+        get_missing_variables(context, selected_template, parsed_cmd);
+        parsed_cmds.push_back(parsed_cmd);
+    }
+
     // Resolve commands
     if(!resolve_functions(context, selected_template))
     {
@@ -158,7 +167,7 @@ bool Ekt::resolve_template(const std::string& template_name)
     }
 
     // Run post commands after chained template
-    if(!run_post_commands(selected_template))
+    if(!run_post_commands(context, parsed_cmds))
     {
         return false;
     }
@@ -198,7 +207,7 @@ void Ekt::get_missing_variables(Context& context, const Template& selected_templ
     const auto& found_variables = parsed_template.variables();
     for(const auto& loc : found_variables)
     {
-        const auto& v = to_upper(std::string(parsed_template.get_variable(loc)));
+        const auto& v = parsed_template.get_variable(loc);
         if (context.contains(v) || selected_template.functions.contains(v))
         {
             continue;
@@ -208,7 +217,7 @@ void Ekt::get_missing_variables(Context& context, const Template& selected_templ
         // TODO: maybe sanitize?s
         std::cout << v << ": ";
         std::string value = get_user_input();
-        context.insert(std::string(v), value);
+        context.insert(v, value);
     }
 }
 
@@ -229,15 +238,16 @@ bool Ekt::resolve_functions(Context& context, const Template& selected_template)
     return true;
 }
 
-bool Ekt::run_post_commands(const Template& selected_template)
+bool Ekt::run_post_commands(const Context& context, const std::vector<ParsedTemplateString>& parsed_commands)
 {
-    for(auto& cmd : selected_template.post_commands)
+    for(auto& cmd : parsed_commands)
     {
-        std::cout << "\nRunning command: \n " << cmd << "\n";
-        auto [res, output] = execute_command(cmd);
+        auto resolved_cmd = cmd.resolve(context);
+        std::cout << "\nRunning command: \n " << resolved_cmd << "\n";
+        auto [res, output] = execute_command(resolved_cmd);
         if (res < 0)
         {
-            std::cerr << "Failed to execute command: " << cmd << "\n";
+            std::cerr << "Failed to execute command: " << resolved_cmd << "\n";
             return false;
         }
         else

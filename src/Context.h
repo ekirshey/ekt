@@ -8,7 +8,6 @@ class Context
 {
 public:
     bool contains(const std::string& key) const;
-    bool contains(const std::string_view& key) const;
 
     void insert(const Context& context);
     void insert(const std::string& key, const std::string& value);

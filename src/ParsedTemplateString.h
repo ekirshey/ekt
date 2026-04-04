@@ -23,7 +23,7 @@ public:
     std::string resolve(const Context& context) const;
 
     const std::vector<VariableLocation>& variables() const;
-    std::string_view get_variable(const VariableLocation& location) const;
+    std::string get_variable(const VariableLocation& location) const;
 
 private:
     std::string m_content;

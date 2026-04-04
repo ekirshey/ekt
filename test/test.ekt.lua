@@ -48,4 +48,10 @@ function ekt.build()
     app_cmake:add_post_command("cmake --preset=" .. cmake_preset)
     app_cmake:add_function_var("internal_source_files", get_internal_files)
     ekt.add_template("app_cmake", app_cmake)
+
+    local test = Template.new()
+    test:add_component(dir .. "/test_templates/AppCMakeListsTemplate.ekt", dir .. "/CMakeLists.txt")
+    test:add_function_var("internal_source_files", get_internal_files)
+    test:add_post_command("echo ![[preset]]")
+    ekt.add_template("app_cmake", app_cmake)
 end

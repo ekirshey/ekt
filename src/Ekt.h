@@ -21,7 +21,8 @@ private:
     void get_user_input_variables(Context& context, const Template& selected_template);
     void get_missing_variables(Context& context, const Template& selected_template, const ParsedTemplateString& parsed_template);
     bool resolve_functions(Context& context, const Template& selected_template);
-    bool run_post_commands(const Template& selected_template);
+
+    bool run_post_commands(const Context& context, const std::vector<ParsedTemplateString>& parsed_commands);
 
     std::unordered_map<std::string, Template> m_templates;
     Context m_global_context;

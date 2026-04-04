@@ -126,11 +126,12 @@ void LuaInterface::build(Ekt& ekt)
         sol::no_constructor,
         "get", [](const Context& context, const std::string& key) -> std::optional<std::string>
         {
-            if (!context.contains(key))
+            auto upper_case_key = to_upper(key);
+            if (!context.contains(upper_case_key))
             {
                 return std::nullopt;
             }
-            auto value = context.get(key);
+            auto value = context.get(upper_case_key);
             if (value.size() == 0)
             {
                 return std::nullopt;
