@@ -1,0 +1,32 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "mac_default",
+      "inherits": "mac_debug",
+      "binaryDir": "${sourceDir}/out/build/release/",
+      "installDir": "${sourceDir}/out/install/release/",
+      "environment": {
+        "VCPKG_ROOT": "/Users/ekir/sadbrains/core_tech/vcpkg"
+      }
+    },
+    {
+      "name": "nix_default",
+      "inherits": "nix_debug",
+      "binaryDir": "${sourceDir}/out/build/release/",
+      "installDir": "${sourceDir}/out/install/release/",
+      "environment": {
+        "VCPKG_ROOT": "/home/ekir/vcpkg"
+      }
+    },
+    {
+      "name": "win_default",
+      "inherits": "win_debug",
+      "binaryDir": "${sourceDir}/out/build/release/",
+      "installDir": "${sourceDir}/out/install/release/",
+      "environment": {
+        "VCPKG_ROOT": "E:/vcpkg"
+      }
+    }
+  ]
+}

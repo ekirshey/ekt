@@ -11,6 +11,7 @@
 #ifdef _WIN32
     #define POPEN _popen
     #define PCLOSE _pclose
+    #define WEXITSTATUS(s) (s)
 #else
     #define POPEN popen
     #define PCLOSE pclose
@@ -47,7 +48,7 @@ namespace
         std::array<char, 256> buffer;
         std::string output;
 
-        FILE* pipe = popen(command.c_str(), "r");
+        FILE* pipe = POPEN(command.c_str(), "r");
         if (!pipe)
         {
             return {-1, ""};
@@ -58,7 +59,7 @@ namespace
             output += buffer.data();
         }
 
-        int status = pclose(pipe);
+        int status = PCLOSE(pipe);
         return {WEXITSTATUS(status), output};
     }
 

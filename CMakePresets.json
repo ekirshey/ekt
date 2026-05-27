@@ -2,32 +2,43 @@
   "version": 3,
   "configurePresets": [
     {
-      "name": "default",
-      "displayName": "Default",
+      "name": "mac_debug",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build",
-      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "binaryDir": "${sourceDir}/out/build/debug/",
+      "installDir": "${sourceDir}/out/install/debug/",
       "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "CMAKE_BUILD_TYPE": "Debug"
       }
     },
     {
-      "name": "release",
-      "inherits": "default",
-      "displayName": "Release",
+      "name": "nix_debug",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/out/build/debug/",
+      "installDir": "${sourceDir}/out/install/debug/",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_BUILD_TYPE": "Debug"
       }
-    }
-  ],
-  "buildPresets": [
-    {
-      "name": "default",
-      "configurePreset": "default"
     },
     {
-      "name": "release",
-      "configurePreset": "release"
+      "name": "win_debug",
+      "generator": "Visual Studio 17 2022",
+      "binaryDir": "${sourceDir}/out/build/debug/",
+      "installDir": "${sourceDir}/out/install/debug/",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "cl.exe",
+        "CMAKE_CXX_COMPILER": "cl.exe",
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
     }
   ]
 }

@@ -5,6 +5,7 @@
 #include <unordered_set>
 #include <algorithm>
 #include <cctype>
+#include <iostream>
 
 #include "sol/sol.hpp"
 #include "Template.h"
@@ -194,7 +195,7 @@ bool LuaInterface::load_script_file(const std::filesystem::path& script, std::st
         return false;
     }
 
-    auto config = lua.safe_script_file(script);
+    auto config = lua.safe_script_file(script.string());
     if (!config.valid())
     {
         error = config;
