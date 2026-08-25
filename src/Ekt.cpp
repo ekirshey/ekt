@@ -1,5 +1,4 @@
 #include "Ekt.h"
-#include <iostream>
 #include <fstream>
 #include <ranges>
 #include "ParsedTemplateString.h"
@@ -7,15 +6,6 @@
 #include "lua_interface.h"
 #include "utils.h"
 #include "sol/sol.hpp"
-
-#ifdef _WIN32
-    #define POPEN _popen
-    #define PCLOSE _pclose
-    #define WEXITSTATUS(s) (s)
-#else
-    #define POPEN popen
-    #define PCLOSE pclose
-#endif
 
 namespace
 {
@@ -35,57 +25,58 @@ namespace
        return true;
     }
 
-    std::string get_user_input()
-    {
-        std::string line;
-        std::getline(std::cin, line);
-
-        return line;
-    }
-
-    std::pair<int, std::string> execute_command(const std::string& command)
-    {
-        std::array<char, 256> buffer;
-        std::string output;
-
-        FILE* pipe = POPEN(command.c_str(), "r");
-        if (!pipe)
-        {
-            return {-1, ""};
-        }
-
-        while (fgets(buffer.data(), buffer.size(), pipe))
-        {
-            output += buffer.data();
-        }
-
-        int status = PCLOSE(pipe);
-        return {WEXITSTATUS(status), output};
-    }
-
     struct ParsedTemplateComponent
     {
         ParsedTemplateString input;
         ParsedTemplateString output_file;
     };
 
-    bool create_parsed_component(TemplateComponent& component, ParsedTemplateComponent& p)
+    std::expected<void, std::string> create_parsed_component(TemplateComponent& component, ParsedTemplateComponent& p)
     {
         std::string file_contents;
         if(!get_input_file_content(component.input_file, file_contents))
         {
-            std::cerr << "Could not open input file: " << component.input_file << "\n";
-            return false;
+            return std::unexpected("Could not open input file: " + component.input_file);
         }
 
-        TRY_UNWRAP(input, ParsedTemplateString::parse(file_contents));
-        TRY_UNWRAP(output_file, ParsedTemplateString::parse(component.output_file));
+        auto input_result = ParsedTemplateString::parse(file_contents);
+        if(!input_result)
+        {
+            return std::unexpected("Failed to parse input contents for: " + component.input_file);
+        }
 
-        p.input = input;
-        p.output_file = output_file;
+        auto output_result = ParsedTemplateString::parse(component.output_file);
+        if(!output_result)
+        {
+            return std::unexpected("Failed to parse output file: " + component.output_file);
+        }
+ 
+        p.input = *input_result;
+        p.output_file = *output_result;
 
-        return true;
+        return {};
     }
+}
+
+Ekt::Ekt()
+{
+    
+}
+
+std::expected<void, std::string> Ekt::initialize(const std::vector<std::filesystem::path>& scripts)
+{
+    LuaInterface::build(*this);
+
+    std::string error;
+    for(auto& f : scripts)
+    {
+        if(!LuaInterface::load_script_file(f, error))
+        {
+            return std::unexpected("Failed to load: " + error);
+        }
+    }
+
+    return {};
 }
 
 void Ekt::add_template(const std::string& name, const Template& ekt_template)
@@ -98,12 +89,34 @@ void Ekt::add_global_var(const std::string& key, const std::string& value)
     m_global_context.insert(key, value);
 }
 
-bool Ekt::resolve_template(const std::string& template_name)
+Ekt::Result Ekt::resolve_template(const std::string& template_name, const InputCallback& input_cb, const MissingVarCallback& missing_var_cb)
+{
+    EktTemplateResult resolved;
+
+    if(auto result = resolve_template_impl(template_name, input_cb, missing_var_cb, resolved); !result)
+    {
+        return std::unexpected(result.error());
+    }
+
+    return resolved;
+}
+
+bool Ekt::template_exists(const std::string& template_name)
+{
+    return m_templates.contains(template_name);
+}
+
+std::vector<std::string> Ekt::available_templates()
+{
+    auto kv = std::views::keys(m_templates);
+    return std::vector<std::string>(kv.begin(), kv.end());
+}
+
+std::expected<void, std::string> Ekt::resolve_template_impl(const std::string& template_name, const InputCallback& input_cb, const MissingVarCallback& missing_var_cb, EktTemplateResult& out)
 {
     if (!m_templates.contains(template_name))
     {
-        std::cerr << "Invalid template name: " << template_name;
-        return false;
+        return std::unexpected("Invalid template name: " + template_name);
     }
 
     auto& selected_template = m_templates[template_name];
@@ -118,92 +131,76 @@ bool Ekt::resolve_template(const std::string& template_name)
     int i = 0;
     for(auto& c : selected_template.components)
     {
-        if(!create_parsed_component(c, parsed_components[i++]))
+        if(auto result = create_parsed_component(c, parsed_components[i++]); !result)
         {
-            std::cerr << "Failed to parse component: " << c.input_file << " : " << c.output_file << "\n";
-            return false;
+            return std::unexpected("Failed to parse component: " + c.input_file + " : " + c.output_file + " error: " + result.error() + " \n");
         }
     }
 
     // Get explicit user input variables
-    get_user_input_variables(context, selected_template);
+    get_user_input_variables(context, selected_template, input_cb);
 
     for(auto& p : parsed_components)
     {
         // Prompt users for any remaining variable names in output file and template
-        get_missing_variables(context, selected_template, p.output_file);
-        get_missing_variables(context, selected_template, p.input);
+        get_missing_variables(context, selected_template, p.output_file, missing_var_cb);
+        get_missing_variables(context, selected_template, p.input, missing_var_cb);
     }
 
     std::vector<ParsedTemplateString> parsed_cmds;
     // Allows for variables in post commands
     for(auto& cmd : selected_template.post_commands)
     {
-        TRY_UNWRAP(parsed_cmd, ParsedTemplateString::parse(cmd));
-        get_missing_variables(context, selected_template, parsed_cmd);
-        parsed_cmds.push_back(parsed_cmd);
+        auto result = ParsedTemplateString::parse(cmd);
+        if (!result)
+        {
+            return std::unexpected("Failed to parse command: " + cmd);
+        }
+        get_missing_variables(context, selected_template, *result, missing_var_cb);
+        parsed_cmds.push_back(*result);
     }
 
     // Resolve commands
-    if(!resolve_functions(context, selected_template))
+    if(auto result = resolve_functions(context, selected_template); !result)
     {
-        return false;
+        return std::unexpected("Failed to resolve functions. error: " + result.error());
     }
 
-    std::cout << "Writing to: \n";
     for(auto& p : parsed_components)
     {
-        std::string outputfile = p.output_file.resolve(context);
-        std::string content = p.input.resolve(context);
-        std::cout << outputfile << "\n";
-        std::ofstream(outputfile) << content;
+        out.templates.push_back({
+            .output_path = p.output_file.resolve(context),
+            .content = p.input.resolve(context)
+        });
     }
 
     for(auto& t : selected_template.chained_templates)
     {
-        if(!resolve_template(t))
+        auto r = resolve_template_impl(t, input_cb, missing_var_cb, out);
+        if(!r)
         {
-            return false;
+            return std::unexpected("Failed to resolve chained template: " + t);
         }
     }
 
-    // Run post commands after chained template
-    if(!run_post_commands(context, parsed_cmds))
+    for(auto& cmd : parsed_cmds)
     {
-        return false;
+        auto resolved_cmd = cmd.resolve(context);
+        out.post_commands.push_back(resolved_cmd);
     }
 
-    return true;
+    return {};
 }
 
-bool Ekt::template_exists(const std::string& template_name)
-{
-    return m_templates.contains(template_name);
-}
-
-std::vector<std::string> Ekt::available_templates()
-{
-    auto kv = std::views::keys(m_templates);
-    return std::vector<std::string>(kv.begin(), kv.end());
-}
-
-void Ekt::get_user_input_variables(Context& context, const Template& selected_template)
+void Ekt::get_user_input_variables(Context& context, const Template& selected_template, const InputCallback& input_cb)
 {
     for(const auto& user_input : selected_template.user_input)
     {
-        bool has_default = !user_input.default_value.empty();
-        std::string default_value = has_default ? "[Default: " + user_input.default_value + "]" : "";
-        std::cout << user_input.name << " " << default_value << ": ";
-        std::string value = get_user_input();
-        if (value.empty() && has_default)
-        {
-            value = user_input.default_value;
-        }
-        context.insert(user_input.name, value);
+        context.insert(user_input.name, input_cb(user_input));
     }
 }
 
-void Ekt::get_missing_variables(Context& context, const Template& selected_template, const ParsedTemplateString& parsed_template)
+void Ekt::get_missing_variables(Context& context, const Template& selected_template, const ParsedTemplateString& parsed_template, const MissingVarCallback& missing_var_cb)
 {
     const auto& found_variables = parsed_template.variables();
     for(const auto& loc : found_variables)
@@ -214,48 +211,22 @@ void Ekt::get_missing_variables(Context& context, const Template& selected_templ
             continue;
         }
 
-        // Get input for missing variables
-        // TODO: maybe sanitize?s
-        std::cout << v << ": ";
-        std::string value = get_user_input();
-        context.insert(v, value);
+        context.insert(v, missing_var_cb(v));
     }
 }
 
-bool Ekt::resolve_functions(Context& context, const Template& selected_template)
+std::expected<void, std::string>  Ekt::resolve_functions(Context& context, const Template& selected_template)
 {
     for(auto& [k,v] : selected_template.functions)
     {
         auto result = LuaInterface::run_template_function(context, v);
         if (!result.has_value())
         {
-            std::cerr << result.error() << "\n";
-            return false;
+            return std::unexpected(result.error());
         }
 
         context.insert(k, result.value());
     }
 
-    return true;
-}
-
-bool Ekt::run_post_commands(const Context& context, const std::vector<ParsedTemplateString>& parsed_commands)
-{
-    for(auto& cmd : parsed_commands)
-    {
-        auto resolved_cmd = cmd.resolve(context);
-        std::cout << "\nRunning command: \n " << resolved_cmd << "\n";
-        auto [res, output] = execute_command(resolved_cmd);
-        if (res < 0)
-        {
-            std::cerr << "Failed to execute command: " << resolved_cmd << "\n";
-            return false;
-        }
-        else
-        {
-            std::cout << output << "\n";
-        }
-    }
-
-    return true;
+    return {};
 }

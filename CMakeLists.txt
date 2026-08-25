@@ -8,26 +8,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "_CMake")
 
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(LuaJIT REQUIRED IMPORTED_TARGET luajit)
-find_path(SOL2_INCLUDE_DIRS "sol/abort.hpp")
+# The library holding all of the ekt template machinery
+add_subdirectory(src)
 
-add_executable(ekt
-    src/main.cpp
-    src/lua_interface.cpp
-    src/Ekt.cpp
-    src/Config.cpp
-    src/Context.cpp
-    src/CommandLine.cpp
-    src/Template.cpp
-    src/utils.cpp
-    src/ParsedTemplateString.cpp
-)
-
-target_link_libraries(ekt PRIVATE
-    PkgConfig::LuaJIT
-)
-
-target_include_directories(ekt PUBLIC
-    ${SOL2_INCLUDE_DIRS}
-)
+# The ekt command line executable
+add_subdirectory(app)

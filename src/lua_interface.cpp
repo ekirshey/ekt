@@ -10,7 +10,6 @@
 #include "sol/sol.hpp"
 #include "Template.h"
 #include "Context.h"
-#include "lua_interface.h"
 #include "utils.h"
 
 namespace fs = std::filesystem;

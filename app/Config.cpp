@@ -74,23 +74,3 @@ std::vector<fs::path> Config::find_scripts()
 
     return scripts;
 }
-
-bool Config::load_scripts(const std::vector<std::filesystem::path>& scripts)
-{
-    std::string error;
-    std::cout << "Loading the following config: \n";
-    for(auto& f : scripts)
-    {
-        std::cout << f << "\n";
-        if(!LuaInterface::load_script_file(f, error))
-        {
-            std::cerr << "Failed to load: " << error;
-            return false;
-        }
-    }
-
-    std::cout << "\n";
-
-    return true;
-
-}
