@@ -82,5 +82,5 @@ std::string ParsedTemplateString::get_variable(const VariableLocation& location)
 {
     const int start = location.start + template_start.length();
     const int length = location.end - template_end.length() - start;
-    return to_upper(std::string(m_content.data() + start, length));
+    return utils::to_upper(std::string(m_content.data() + start, length));
 }

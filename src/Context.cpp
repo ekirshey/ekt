@@ -16,7 +16,7 @@ void Context::insert(const Context& context)
 
 void Context::insert(const std::string& key, const std::string& value)
 {
-    m_data[to_upper(key)] = value;
+    m_data[utils::to_upper(key)] = value;
 }
 
 std::string Context::get(const std::string& key) const

@@ -60,20 +60,14 @@ namespace
 
 Ekt::Ekt()
 {
-    
+    m_interface.build(*this);
 }
 
-std::expected<void, std::string> Ekt::initialize(const std::vector<std::filesystem::path>& scripts)
+std::expected<void, std::string> Ekt::load_script_file(const std::filesystem::path& script)
 {
-    LuaInterface::build(*this);
-
-    std::string error;
-    for(auto& f : scripts)
+    if(auto result = m_interface.load_script_file(script); !result)
     {
-        if(!LuaInterface::load_script_file(f, error))
-        {
-            return std::unexpected("Failed to load: " + error);
-        }
+        return std::unexpected("Failed to load: " + result.error());
     }
 
     return {};
@@ -219,7 +213,7 @@ std::expected<void, std::string>  Ekt::resolve_functions(Context& context, const
 {
     for(auto& [k,v] : selected_template.functions)
     {
-        auto result = LuaInterface::run_template_function(context, v);
+        auto result = m_interface.run_template_function(context, v);
         if (!result.has_value())
         {
             return std::unexpected(result.error());

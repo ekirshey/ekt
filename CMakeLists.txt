@@ -13,3 +13,9 @@ add_subdirectory(src)
 
 # The ekt command line executable
 add_subdirectory(app)
+
+option(EKT_BUILD_TESTS "Build the ekt unit tests" ON)
+if(EKT_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()

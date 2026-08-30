@@ -74,10 +74,13 @@ int main(int argc, char* argv[])
         scripts.push_back(args.user_provided_script);
     }
 
-    if(auto result = ekt.initialize(scripts); !result)
+    for(auto& script : scripts)
     {
-        std::cout << result.error() << std::endl;
-        return 1;
+        if(auto result = ekt.load_script_file(script); !result)
+        {
+            std::cout << result.error() << std::endl;
+            return 1;
+        }
     }
 
     if (args.chosen_template.empty() || !ekt.template_exists(args.chosen_template))

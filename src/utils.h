@@ -2,4 +2,8 @@
 
 #include <string>
 
-std::string to_upper(const std::string& in);
+namespace utils
+{
+    std::string to_upper(const std::string& in);
+}
+

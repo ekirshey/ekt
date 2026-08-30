@@ -7,16 +7,15 @@
 #include <cctype>
 #include <iostream>
 
-#include "sol/sol.hpp"
 #include "Template.h"
 #include "Context.h"
 #include "utils.h"
+#include "Ekt.h"
 
 namespace fs = std::filesystem;
 
 namespace
 {
-    sol::state lua;
     fs::path current_script;
 
     const char* root_table = "ekt";
@@ -36,32 +35,33 @@ namespace
     const char* add_function_var = "add_function_var";
     const char* add_post_command = "add_post_command";
     const char* add_chained_template = "add_chained_template";
+}
 
-    bool execute(std::string& error)
+std::expected<void, std::string> LuaInterface::execute()
+{
+    sol::optional<sol::protected_function> func = m_lua[root_table][entry_point];
+    if (func)
     {
-        sol::optional<sol::function> func = lua[root_table][entry_point];
-        if (func)
+        sol::protected_function_result res = func.value()();
+        if (!res.valid())
         {
-            sol::protected_function_result res = func.value()();
-            if (!res.valid())
-            {
-                error = res;
-            }
+            sol::error err = res;
+            return std::unexpected(err.what());
         }
-        else
-        {
-            error = "Must implement ekt.build\n";
-        }
-
-        return true;
     }
+    else
+    {
+        return std::unexpected("Must implement ekt.build\n");
+    }
+
+    return {};
 }
 
 void LuaInterface::build(Ekt& ekt)
 {
-    lua.open_libraries(sol::lib::base);
+    m_lua.open_libraries(sol::lib::base);
 
-    sol::table ekt_table = lua.create_named_table(root_table);
+    sol::table ekt_table = m_lua.create_named_table(root_table);
     ekt_table[add_template] = [&ekt](const std::string& name, const Template& ekt_template)
         {
             ekt.add_template(name, ekt_template);
@@ -82,7 +82,7 @@ void LuaInterface::build(Ekt& ekt)
             std::unordered_set<std::string> exts(extensions.begin(), extensions.end());
             fs::path start(path);
 
-            if(!fs::exists(start))
+            if (!fs::exists(start))
             {
                 std::cerr << "Invalid path provided to ekt.get_filenames: " << start << "\n";
                 return "";
@@ -113,20 +113,20 @@ void LuaInterface::build(Ekt& ekt)
 
     ekt_table[get_platform] = []()
         {
-            #ifdef _WIN32
+#ifdef _WIN32
             return "win";
-            #elif defined(__APPLE__)
+#elif defined(__APPLE__)
             return "mac";
-            #else
+#else
             return "linux";
-            #endif
+#endif
         };
 
-    lua.new_usertype<Context>("Context",
+    m_lua.new_usertype<Context>("Context",
         sol::no_constructor,
         "get", [](const Context& context, const std::string& key) -> std::optional<std::string>
         {
-            auto upper_case_key = to_upper(key);
+            auto upper_case_key = utils::to_upper(key);
             if (!context.contains(upper_case_key))
             {
                 return std::nullopt;
@@ -137,10 +137,10 @@ void LuaInterface::build(Ekt& ekt)
                 return std::nullopt;
             }
             return value;
-         }
+        }
     );
 
-    lua.new_usertype<Template>("Template",
+    m_lua.new_usertype<Template>("Template",
         sol::constructors<Template()>(),
 
         add_component, [](Template& t, const std::string& input_file, const std::string& output_file)
@@ -149,7 +149,7 @@ void LuaInterface::build(Ekt& ekt)
             t.components.push_back({
                 .input_file = input_file,
                 .output_file = output_file
-            });
+                });
         },
 
         add_key_value, [](Template& t, const std::string& key, const std::string& value)
@@ -160,7 +160,7 @@ void LuaInterface::build(Ekt& ekt)
         add_user_input_var, [](Template& t, const std::string& key, const std::string& default_value)
         {
             TemplateInputVariable input;
-            input.name = to_upper(key);
+            input.name = utils::to_upper(key);
             if (!default_value.empty())
             {
                 input.default_value = default_value;
@@ -170,7 +170,7 @@ void LuaInterface::build(Ekt& ekt)
 
         add_function_var, [](Template& t, const std::string& key, sol::protected_function command)
         {
-            t.functions[to_upper(key)] = command;
+            t.functions[utils::to_upper(key)] = command;
         },
 
         add_post_command, [](Template& t, const std::string& command)
@@ -186,30 +186,31 @@ void LuaInterface::build(Ekt& ekt)
 
 }
 
-bool LuaInterface::load_script_file(const std::filesystem::path& script, std::string& error)
+std::expected<void, std::string> LuaInterface::load_script_file(const std::filesystem::path& script)
 {
     if (script.empty())
     {
-        error = "No config path provided";
-        return false;
+        return std::unexpected("No config path provided");
     }
 
-    auto config = lua.safe_script_file(script.string());
+    auto config = m_lua.safe_script_file(script.string(), sol::script_pass_on_error);
     if (!config.valid())
     {
-        error = config;
-        return false;
+        sol::error err = config;
+        return std::unexpected(err.what());
     }
 
     current_script = script;
-    auto result = execute(error);
+    if(auto result = execute(); !result)
+    {
+        return std::unexpected(result.error());
+    }
     current_script.clear();
 
-    return result;
+    return {};
 }
 
-std::expected<std::string, std::string>
-LuaInterface::run_template_function(Context& context, const sol::protected_function& func)
+std::expected<std::string, std::string> LuaInterface::run_template_function(Context& context, const sol::protected_function& func)
 {
     auto result = func(context);
     if (!result.valid())
