@@ -60,17 +60,6 @@ namespace
 
 Ekt::Ekt()
 {
-    m_interface.build(*this);
-}
-
-std::expected<void, std::string> Ekt::load_script_file(const std::filesystem::path& script)
-{
-    if(auto result = m_interface.load_script_file(script); !result)
-    {
-        return std::unexpected("Failed to load: " + result.error());
-    }
-
-    return {};
 }
 
 void Ekt::add_template(const std::string& name, const Template& ekt_template)
@@ -213,7 +202,7 @@ std::expected<void, std::string>  Ekt::resolve_functions(Context& context, const
 {
     for(auto& [k,v] : selected_template.functions)
     {
-        auto result = m_interface.run_template_function(context, v);
+        auto result = v(context);
         if (!result.has_value())
         {
             return std::unexpected(result.error());

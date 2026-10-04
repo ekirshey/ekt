@@ -33,7 +33,6 @@ public:
     using Result = std::expected<EktTemplateResult, std::string>;
 
     Ekt();
-    std::expected<void, std::string> load_script_file(const std::filesystem::path& script);
 
     void add_template(const std::string& name, const Template& ekt_template);
     void add_global_var(const std::string& key, const std::string& value);
@@ -47,7 +46,6 @@ private:
     void get_missing_variables(Context& context, const Template& selected_template, const ParsedTemplateString& parsed_template, const MissingVarCallback& missing_var_cb);
     std::expected<void, std::string> resolve_functions(Context& context, const Template& selected_template);
 
-    LuaInterface m_interface;
     std::unordered_map<std::string, Template> m_templates;
     Context m_global_context;
     

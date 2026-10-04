@@ -57,9 +57,22 @@ std::pair<int, std::string> execute_command(const std::string& command)
     return {WEXITSTATUS(status), output};
 }
 
+std::expected<void, std::string> load_script_file(LuaInterface& interface, const std::filesystem::path& script)
+{
+    if(auto result = interface.load_script_file(script); !result)
+    {
+        return std::unexpected("Failed to load: " + result.error());
+    }
+
+    return {};
+}
+
 int main(int argc, char* argv[])
 {
     Ekt ekt;
+
+    LuaInterface ekt_lua_interface;
+    ekt_lua_interface.build(ekt);
 
     CommandLineArgs args;
     if(!CommandLine::process_args(argc, argv, args))
@@ -76,7 +89,7 @@ int main(int argc, char* argv[])
 
     for(auto& script : scripts)
     {
-        if(auto result = ekt.load_script_file(script); !result)
+        if(auto result = load_script_file(ekt_lua_interface, script); !result)
         {
             std::cout << result.error() << std::endl;
             return 1;
