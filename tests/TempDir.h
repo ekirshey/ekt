@@ -50,7 +50,7 @@ public:
     // The script name matters: ekt only picks up files ending in ekt.lua
     std::filesystem::path write_script(std::string_view content) const
     {
-        return write("test." + LuaInterface::script_ext, content);
+        return write("test." + ekt::LuaInterface::script_ext, content);
     }
 
 private:

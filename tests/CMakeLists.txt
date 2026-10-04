@@ -9,7 +9,7 @@ set(EKT_TEST_SOURCE
 add_executable(ekt_tests ${EKT_TEST_SOURCE})
 
 target_link_libraries(ekt_tests PRIVATE
-    ekt::ekt_lib
+    ekt::ekt_lua
     Catch2::Catch2WithMain
 )
 

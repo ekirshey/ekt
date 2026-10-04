@@ -4,12 +4,12 @@
 #include <unordered_map>
 #include <expected>
 #include <filesystem>
+#include <functional>
 
 #include "Context.h"
 
 #include "ParsedTemplateString.h"
 #include "Template.h"
-#include "lua_interface.h"
 
 
 struct EktResolvedTemplate

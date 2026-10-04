@@ -17,9 +17,9 @@ bool CommandLine::process_args(int argc, char* argv[], CommandLineArgs& args)
     if (std::string(argv[1]) == "--path")
     {
         fs::path path(argv[2]);
-        if (!path.string().ends_with(LuaInterface::script_ext))
+        if (!path.string().ends_with(ekt::LuaInterface::script_ext))
         {
-            std::cerr << "Malformed path: " << path << "\n must have extension " << LuaInterface::script_ext << "\n";
+            std::cerr << "Malformed path: " << path << "\n must have extension " << ekt::LuaInterface::script_ext << "\n";
             return false;
         }
         if (!fs::exists(path))

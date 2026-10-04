@@ -37,7 +37,7 @@ namespace
     const char* add_chained_template = "add_chained_template";
 }
 
-std::expected<void, std::string> LuaInterface::execute()
+std::expected<void, std::string> ekt::LuaInterface::execute()
 {
     sol::optional<sol::protected_function> func = m_lua[root_table][entry_point];
     if (func)
@@ -57,7 +57,7 @@ std::expected<void, std::string> LuaInterface::execute()
     return {};
 }
 
-void LuaInterface::build(Ekt& ekt)
+void ekt::LuaInterface::build(Ekt& ekt)
 {
     m_lua.open_libraries(sol::lib::base);
 
@@ -170,7 +170,24 @@ void LuaInterface::build(Ekt& ekt)
 
         add_function_var, [](Template& t, const std::string& key, sol::protected_function command)
         {
-            t.functions[utils::to_upper(key)] = command;
+            t.functions[utils::to_upper(key)] =
+                [command](Context& context) -> std::expected<std::string, std::string>
+                {
+                    auto result = command(context);
+                    if (!result.valid())
+                    {
+                        sol::error err = result;
+                        return std::unexpected(err.what());
+                    }
+
+                    sol::object ret = result;
+                    if (ret.get_type() != sol::type::string)
+                    {
+                        return std::unexpected("callback must return a string\n");
+                    }
+
+                    return ret.as<std::string>();
+                };
         },
 
         add_post_command, [](Template& t, const std::string& command)
@@ -186,7 +203,7 @@ void LuaInterface::build(Ekt& ekt)
 
 }
 
-std::expected<void, std::string> LuaInterface::load_script_file(const std::filesystem::path& script)
+std::expected<void, std::string> ekt::LuaInterface::load_script_file(const std::filesystem::path& script)
 {
     if (script.empty())
     {
@@ -208,22 +225,4 @@ std::expected<void, std::string> LuaInterface::load_script_file(const std::files
     current_script.clear();
 
     return {};
-}
-
-std::expected<std::string, std::string> LuaInterface::run_template_function(Context& context, const sol::protected_function& func)
-{
-    auto result = func(context);
-    if (!result.valid())
-    {
-        sol::error err = result;
-        return std::unexpected(err.what());
-    }
-
-    sol::object ret = result;
-    if (ret.get_type() != sol::type::string)
-    {
-        return std::unexpected("callback must return a string\n");
-    }
-
-    return ret.as<std::string>();
 }

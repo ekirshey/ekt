@@ -3,8 +3,9 @@
 #include <string>
 #include <vector>
 #include <expected>
+#include <functional>
+#include <unordered_map>
 #include "Context.h"
-#include "sol/sol.hpp"
 #include "string_hash.h"
 
 using TemplateFunction = std::function<std::expected<std::string, std::string>(Context&)>;

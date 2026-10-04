@@ -3,9 +3,7 @@
 #include <ranges>
 #include "ParsedTemplateString.h"
 #include "Template.h"
-#include "lua_interface.h"
 #include "utils.h"
-#include "sol/sol.hpp"
 
 namespace
 {

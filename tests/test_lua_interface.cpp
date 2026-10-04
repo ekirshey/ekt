@@ -5,9 +5,9 @@
 
 #include "Ekt.h"
 #include "lua_interface.h"
-#include "sol/sol.hpp"
 
 #include <algorithm>
+#include <expected>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -16,11 +16,26 @@ namespace fs = std::filesystem;
 
 namespace
 {
-    // Constructing an Ekt builds its own LuaInterface, whose sol::state outlives
-    // the templates that reference it, so tests just construct and load.
-    void load(Ekt& ekt, const fs::path& script)
+    // The LuaInterface owns the sol::state that the registered template
+    // functions close over, so it has to outlive the Ekt it populates. Bundling
+    // the two keeps that ordering correct: lua is declared first so it is
+    // destroyed last, after the Ekt (and its templates) are already gone.
+    struct LuaFixture
     {
-        auto result = ekt.load_script_file(script);
+        ekt::LuaInterface lua;
+        Ekt ekt;
+
+        LuaFixture() { lua.build(ekt); }
+
+        std::expected<void, std::string> load_script_file(const fs::path& script)
+        {
+            return lua.load_script_file(script);
+        }
+    };
+
+    void load(LuaFixture& fx, const fs::path& script)
+    {
+        auto result = fx.load_script_file(script);
         if (!result) { FAIL(result.error()); }
     }
 
@@ -34,15 +49,15 @@ namespace
         return "missing:" + name;
     }
 
-    Ekt::Result resolve(Ekt& ekt, const std::string& name)
+    Ekt::Result resolve(LuaFixture& fx, const std::string& name)
     {
-        return ekt.resolve_template(name, ask_for_input, ask_for_missing);
+        return fx.ekt.resolve_template(name, ask_for_input, ask_for_missing);
     }
 
     // Renders a single component template and hands back its content.
-    std::string render(Ekt& ekt, const std::string& name)
+    std::string render(LuaFixture& fx, const std::string& name)
     {
-        auto result = resolve(ekt, name);
+        auto result = resolve(fx, name);
         if (!result) { FAIL(result.error()); }
         REQUIRE(result->templates.size() == 1);
         return result->templates[0].content;
@@ -76,32 +91,32 @@ namespace
 
 TEST_CASE("load_script_file rejects an empty path", "[lua_interface]")
 {
-    Ekt ekt;
+    LuaFixture fx;
 
-    auto result = ekt.load_script_file({});
+    auto result = fx.load_script_file({});
     REQUIRE_FALSE(result.has_value());
-    REQUIRE(result.error() == "Failed to load: No config path provided");
+    REQUIRE(result.error() == "No config path provided");
 }
 
 TEST_CASE("load_script_file reports a script that cannot be loaded", "[lua_interface]")
 {
     TempDir dir;
 
-    Ekt ekt;
+    LuaFixture fx;
 
     SECTION("missing file")
     {
-        auto result = ekt.load_script_file(dir.path() / "does_not_exist.ekt.lua");
+        auto result = fx.load_script_file(dir.path() / "does_not_exist.ekt.lua");
         REQUIRE_FALSE(result.has_value());
-        REQUIRE_THAT(result.error(), Catch::Matchers::ContainsSubstring("Failed to load:"));
+        REQUIRE_FALSE(result.error().empty());
     }
 
     SECTION("syntax error")
     {
         auto script = dir.write_script("function ekt.build( end");
-        auto result = ekt.load_script_file(script);
+        auto result = fx.load_script_file(script);
         REQUIRE_FALSE(result.has_value());
-        REQUIRE_THAT(result.error(), Catch::Matchers::ContainsSubstring("Failed to load:"));
+        REQUIRE_FALSE(result.error().empty());
     }
 }
 
@@ -110,11 +125,11 @@ TEST_CASE("load_script_file reports a script without ekt.build", "[lua_interface
     TempDir dir;
     auto script = dir.write_script("local unused = 1");
 
-    Ekt ekt;
+    LuaFixture fx;
 
-    auto result = ekt.load_script_file(script);
+    auto result = fx.load_script_file(script);
     REQUIRE_FALSE(result.has_value());
-    REQUIRE(result.error() == "Failed to load: Must implement ekt.build\n");
+    REQUIRE(result.error() == "Must implement ekt.build\n");
 }
 
 TEST_CASE("an error inside ekt.build is surfaced", "[lua_interface]")
@@ -126,9 +141,9 @@ TEST_CASE("an error inside ekt.build is surfaced", "[lua_interface]")
         end
     )lua");
 
-    Ekt ekt;
+    LuaFixture fx;
 
-    auto result = ekt.load_script_file(script);
+    auto result = fx.load_script_file(script);
     REQUIRE_FALSE(result.has_value());
     REQUIRE_THAT(result.error(), Catch::Matchers::ContainsSubstring("boom"));
 }
@@ -143,14 +158,14 @@ TEST_CASE("ekt.add_template registers templates on the Ekt instance", "[lua_inte
         end
     )lua");
 
-    Ekt ekt;
-    load(ekt, script);
+    LuaFixture fx;
+    load(fx, script);
 
-    REQUIRE(ekt.template_exists("first"));
-    REQUIRE(ekt.template_exists("second"));
-    REQUIRE_FALSE(ekt.template_exists("third"));
+    REQUIRE(fx.ekt.template_exists("first"));
+    REQUIRE(fx.ekt.template_exists("second"));
+    REQUIRE_FALSE(fx.ekt.template_exists("third"));
 
-    auto available = ekt.available_templates();
+    auto available = fx.ekt.available_templates();
     std::sort(available.begin(), available.end());
     REQUIRE(available == std::vector<std::string>{"first", "second"});
 }
@@ -170,10 +185,10 @@ TEST_CASE("ekt.add_global_var values are visible to every template", "[lua_inter
         end
     )lua");
 
-    Ekt ekt;
-    load(ekt, script);
+    LuaFixture fx;
+    load(fx, script);
 
-    REQUIRE(render(ekt, "main") == "author=Erik Kirshey");
+    REQUIRE(render(fx, "main") == "author=Erik Kirshey");
 }
 
 TEST_CASE("Template bindings drive the resolved output", "[lua_interface]")
@@ -207,8 +222,8 @@ TEST_CASE("Template bindings drive the resolved output", "[lua_interface]")
         end
     )lua");
 
-    Ekt ekt;
-    load(ekt, script);
+    LuaFixture fx;
+    load(fx, script);
 
     std::vector<TemplateInputVariable> requested;
     auto input_cb = [&requested](const TemplateInputVariable& input_var)
@@ -217,7 +232,7 @@ TEST_CASE("Template bindings drive the resolved output", "[lua_interface]")
             return std::string("my_project");
         };
 
-    auto result = ekt.resolve_template("main", input_cb, ask_for_missing);
+    auto result = fx.ekt.resolve_template("main", input_cb, ask_for_missing);
     if (!result) { FAIL(result.error()); }
 
     SECTION("add_user_input_var forwards the name and default to the callback")
@@ -273,27 +288,27 @@ TEST_CASE("template functions must return a string", "[lua_interface]")
 
     SECTION("a string return lands in the context")
     {
-        Ekt ekt;
-        load(ekt, script_returning(R"(return "from lua")"));
-        REQUIRE(render(ekt, "main") == "value=from lua");
+        LuaFixture fx;
+        load(fx, script_returning(R"(return "from lua")"));
+        REQUIRE(render(fx, "main") == "value=from lua");
     }
 
     SECTION("a non string return is an error")
     {
-        Ekt ekt;
-        load(ekt, script_returning("return 42"));
+        LuaFixture fx;
+        load(fx, script_returning("return 42"));
 
-        auto result = resolve(ekt, "main");
+        auto result = resolve(fx, "main");
         REQUIRE_FALSE(result.has_value());
         REQUIRE_THAT(result.error(), Catch::Matchers::ContainsSubstring("callback must return a string"));
     }
 
     SECTION("a lua error is propagated")
     {
-        Ekt ekt;
-        load(ekt, script_returning(R"(error("function blew up"))"));
+        LuaFixture fx;
+        load(fx, script_returning(R"(error("function blew up"))"));
 
-        auto result = resolve(ekt, "main");
+        auto result = resolve(fx, "main");
         REQUIRE_FALSE(result.has_value());
         REQUIRE_THAT(result.error(), Catch::Matchers::ContainsSubstring("function blew up"));
     }
@@ -328,27 +343,27 @@ TEST_CASE("Context:get is exposed to template functions", "[lua_interface]")
 
     SECTION("lookups are case insensitive")
     {
-        Ekt lower;
+        LuaFixture lower;
         load(lower, script_looking_up("mixed_case"));
         REQUIRE(render(lower, "main") == "got:value");
 
-        Ekt upper;
+        LuaFixture upper;
         load(upper, script_looking_up("MIXED_CASE"));
         REQUIRE(render(upper, "main") == "got:value");
     }
 
     SECTION("an unknown key is nil")
     {
-        Ekt ekt;
-        load(ekt, script_looking_up("not_a_key"));
-        REQUIRE(render(ekt, "main") == "nil");
+        LuaFixture fx;
+        load(fx, script_looking_up("not_a_key"));
+        REQUIRE(render(fx, "main") == "nil");
     }
 
     SECTION("an empty value is nil")
     {
-        Ekt ekt;
-        load(ekt, script_looking_up("empty_var"));
-        REQUIRE(render(ekt, "main") == "nil");
+        LuaFixture fx;
+        load(fx, script_looking_up("empty_var"));
+        REQUIRE(render(fx, "main") == "nil");
     }
 }
 
@@ -367,10 +382,10 @@ TEST_CASE("ekt.get_script_dir returns the directory of the running script", "[lu
         end
     )lua");
 
-    Ekt ekt;
-    load(ekt, script);
+    LuaFixture fx;
+    load(fx, script);
 
-    REQUIRE(normalize(render(ekt, "main")) == normalize(dir.path().string()));
+    REQUIRE(normalize(render(fx, "main")) == normalize(dir.path().string()));
 }
 
 TEST_CASE("ekt.get_platform reports the host platform", "[lua_interface]")
@@ -388,8 +403,8 @@ TEST_CASE("ekt.get_platform reports the host platform", "[lua_interface]")
         end
     )lua");
 
-    Ekt ekt;
-    load(ekt, script);
+    LuaFixture fx;
+    load(fx, script);
 
 #ifdef _WIN32
     const std::string expected = "win";
@@ -399,7 +414,7 @@ TEST_CASE("ekt.get_platform reports the host platform", "[lua_interface]")
     const std::string expected = "linux";
 #endif
 
-    REQUIRE(render(ekt, "main") == expected);
+    REQUIRE(render(fx, "main") == expected);
 }
 
 TEST_CASE("ekt.get_filenames walks a directory", "[lua_interface]")
@@ -427,31 +442,31 @@ TEST_CASE("ekt.get_filenames walks a directory", "[lua_interface]")
 
     SECTION("only the requested extensions come back, relative to the search root")
     {
-        Ekt ekt;
-        load(ekt, script_calling(R"(ekt.get_filenames(dir .. "/src", { ".cpp", ".h" }))"));
+        LuaFixture fx;
+        load(fx, script_calling(R"(ekt.get_filenames(dir .. "/src", { ".cpp", ".h" }))"));
 
-        REQUIRE(split_lines(render(ekt, "main")) ==
+        REQUIRE(split_lines(render(fx, "main")) ==
                 std::vector<std::string>{"src/a.cpp", "src/a.h", "src/nested/b.cpp"});
     }
 
     SECTION("an empty extension list matches nothing")
     {
-        Ekt ekt;
-        load(ekt, script_calling(R"(ekt.get_filenames(dir .. "/src", { }))"));
-        REQUIRE(render(ekt, "main").empty());
+        LuaFixture fx;
+        load(fx, script_calling(R"(ekt.get_filenames(dir .. "/src", { }))"));
+        REQUIRE(render(fx, "main").empty());
     }
 
     SECTION("an empty path is empty")
     {
-        Ekt ekt;
-        load(ekt, script_calling(R"(ekt.get_filenames("", { ".cpp" }))"));
-        REQUIRE(render(ekt, "main").empty());
+        LuaFixture fx;
+        load(fx, script_calling(R"(ekt.get_filenames("", { ".cpp" }))"));
+        REQUIRE(render(fx, "main").empty());
     }
 
     SECTION("a path that does not exist is empty")
     {
-        Ekt ekt;
-        load(ekt, script_calling(R"(ekt.get_filenames(dir .. "/nope", { ".cpp" }))"));
-        REQUIRE(render(ekt, "main").empty());
+        LuaFixture fx;
+        load(fx, script_calling(R"(ekt.get_filenames(dir .. "/nope", { ".cpp" }))"));
+        REQUIRE(render(fx, "main").empty());
     }
 }

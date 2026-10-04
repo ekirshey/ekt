@@ -5,6 +5,7 @@
 #include "CommandLine.h"
 #include "Ekt.h"
 #include "Config.h"
+#include "lua_interface.h"
 
 #ifdef _WIN32
     #define POPEN _popen
@@ -57,7 +58,7 @@ std::pair<int, std::string> execute_command(const std::string& command)
     return {WEXITSTATUS(status), output};
 }
 
-std::expected<void, std::string> load_script_file(LuaInterface& interface, const std::filesystem::path& script)
+std::expected<void, std::string> load_script_file(ekt::LuaInterface& interface, const std::filesystem::path& script)
 {
     if(auto result = interface.load_script_file(script); !result)
     {
@@ -71,7 +72,7 @@ int main(int argc, char* argv[])
 {
     Ekt ekt;
 
-    LuaInterface ekt_lua_interface;
+    ekt::LuaInterface ekt_lua_interface;
     ekt_lua_interface.build(ekt);
 
     CommandLineArgs args;

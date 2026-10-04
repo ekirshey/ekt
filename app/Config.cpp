@@ -57,7 +57,7 @@ namespace
     {
         for (const auto& entry : fs::recursive_directory_iterator(path))
         {
-            if (entry.is_regular_file() && entry.path().string().ends_with(LuaInterface::script_ext))
+            if (entry.is_regular_file() && entry.path().string().ends_with(ekt::LuaInterface::script_ext))
             {
                 scripts.push_back(entry);
             }
