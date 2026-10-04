@@ -133,23 +133,16 @@ TEST_CASE("an unknown variable resolves to nothing", "[resolution]")
     }
 }
 
-TEST_CASE("a marker with no closing ]] is left as literal text", "[resolution]")
+TEST_CASE("a marker with no closing ]] fails to parse", "[resolution]")
 {
-    auto context = make_context({{"name", "ekt"}});
-
-    // With no closing ]] anywhere there is no variable to substitute, so the
-    // text is emitted verbatim.
-    REQUIRE(resolve("value is ![[name", context) == "value is ![[name");
+    // The expectation is correctly formed templates
+    REQUIRE_FALSE(ParsedTemplateString::parse("value is ![[name"));
 }
 
-TEST_CASE("an opener binds to the first following ]]", "[resolution]")
+TEST_CASE("an opener within an opener fails to parse", "[resolution]")
 {
-    auto context = make_context({{"name", "ekt"}});
-
-    // The first ![[ pairs with the first ]] after it, so everything in between
-    // (a stray ![[ included) becomes a single variable name. Here that name is
-    // unknown, so the whole span resolves to nothing.
-    REQUIRE(resolve("![[unterminated and ![[name]]", context).empty());
+    // No recursive variables
+    REQUIRE_FALSE(ParsedTemplateString::parse("![[unterminated and ![[name]]"));
 }
 
 TEST_CASE("variables() reports the parsed markers", "[resolution]")

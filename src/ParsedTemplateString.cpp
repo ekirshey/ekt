@@ -1,5 +1,7 @@
 #include <expected>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <iostream>
 
 #include "ParsedTemplateString.h"
@@ -9,6 +11,23 @@ namespace
 {
     const std::string template_start = "![[";
     const std::string template_end = "]]";
+
+    std::optional<std::size_t> find_template_end(std::string_view str, std::size_t start)
+    {
+        const auto end = str.find(template_end, start);
+        if (end == std::string_view::npos)
+        {
+            return std::nullopt;
+        }
+
+        const auto nested = str.find(template_start, start);
+        if (nested != std::string_view::npos && nested < end)
+        {
+            return std::nullopt;
+        }
+
+        return end;
+    }
 }
 
 ParsedTemplateString::Result ParsedTemplateString::parse(const std::string& content)
@@ -23,11 +42,13 @@ ParsedTemplateString::Result ParsedTemplateString::parse(const std::string& cont
     std::size_t pos = 0;
     while ((pos = content.find(template_start, pos)) != std::string::npos)
     {
-        std::size_t end = content.find(template_end, pos);
-        if (end == std::string::npos)
+        const auto result = find_template_end(content, pos + template_start.size());
+        if(!result)
         {
-            break;
+            return std::unexpected(false);
         }
+
+        std::size_t end = *result;
 
         std::string inner = content.substr(
             pos + template_start.length(),
@@ -67,7 +88,7 @@ std::string ParsedTemplateString::resolve(const Context& context) const
 
     if (idx < m_content.size())
     {
-        result += m_content.substr(idx, m_content.size()- idx);
+        result += m_content.substr(idx, m_content.size() - idx);
     }
 
     return result;
