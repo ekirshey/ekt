@@ -32,10 +32,12 @@ namespace
 
 ParsedTemplateString::Result ParsedTemplateString::parse(const std::string& content)
 {
+    // Empty outputs are fine
     if (content.empty())
     {
-        return std::unexpected(false);
+        return {};
     }
+
     ParsedTemplateString res;
     res.m_content = content;
 

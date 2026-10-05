@@ -35,10 +35,10 @@ namespace
     }
 }
 
-TEST_CASE("parse rejects empty content", "[resolution]")
+TEST_CASE("parse allows empty content", "[resolution]")
 {
     auto parsed = ParsedTemplateString::parse("");
-    REQUIRE_FALSE(parsed.has_value());
+    REQUIRE(parsed.has_value());
 }
 
 TEST_CASE("content with no variables is returned verbatim", "[resolution]")
