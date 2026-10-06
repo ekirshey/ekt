@@ -1,10 +1,6 @@
 set(EKT_LIB_SOURCE
-    Ekt.cpp
-    Ekt.h
     Context.cpp
     Context.h
-    Template.cpp
-    Template.h
     utils.cpp
     utils.h
     ParsedTemplateString.cpp

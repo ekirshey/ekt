@@ -3,7 +3,7 @@
 
 #include "TempDir.h"
 
-#include "Ekt.h"
+#include "lua_resolver.h"
 #include "lua_interface.h"
 
 #include <algorithm>
@@ -23,7 +23,7 @@ namespace
     struct LuaFixture
     {
         ekt::LuaInterface lua;
-        Ekt ekt;
+        ekt::LuaResolver ekt;
 
         LuaFixture() { lua.build(ekt); }
 
@@ -39,7 +39,7 @@ namespace
         if (!result) { FAIL(result.error()); }
     }
 
-    std::string ask_for_input(const TemplateInputVariable& input_var)
+    std::string ask_for_input(const ekt::LuaTemplateInputVariable& input_var)
     {
         return "input:" + input_var.name;
     }
@@ -49,7 +49,7 @@ namespace
         return "missing:" + name;
     }
 
-    Ekt::Result resolve(LuaFixture& fx, const std::string& name)
+    ekt::LuaResolver::Result resolve(LuaFixture& fx, const std::string& name)
     {
         return fx.ekt.resolve_template(name, ask_for_input, ask_for_missing);
     }
@@ -225,8 +225,8 @@ TEST_CASE("Template bindings drive the resolved output", "[lua_interface]")
     LuaFixture fx;
     load(fx, script);
 
-    std::vector<TemplateInputVariable> requested;
-    auto input_cb = [&requested](const TemplateInputVariable& input_var)
+    std::vector<ekt::LuaTemplateInputVariable> requested;
+    auto input_cb = [&requested](const ekt::LuaTemplateInputVariable& input_var)
         {
             requested.push_back(input_var);
             return std::string("my_project");

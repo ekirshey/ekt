@@ -6,11 +6,11 @@
 #include <filesystem>
 #include <functional>
 
-#include "Context.h"
-
+#include "lua_template.h"
 #include "ParsedTemplateString.h"
-#include "Template.h"
 
+namespace ekt
+{
 
 struct EktResolvedTemplate
 {
@@ -24,29 +24,31 @@ struct EktTemplateResult
     std::vector<std::string> post_commands;
 };
 
-class Ekt
+
+class LuaResolver
 {
 public:
-    using InputCallback = std::function<std::string(const TemplateInputVariable& input_var)>;
+    using InputCallback = std::function<std::string(const LuaTemplateInputVariable& input_var)>;
     using MissingVarCallback = std::function<std::string(const std::string&)>;
 
     using Result = std::expected<EktTemplateResult, std::string>;
 
-    Ekt();
-
-    void add_template(const std::string& name, const Template& ekt_template);
+    void add_template(const std::string& name, const LuaTemplate& ekt_template);
     void add_global_var(const std::string& key, const std::string& value);
     Result resolve_template(const std::string& template_name, const InputCallback& input_cb, const MissingVarCallback& missing_var_cb);
+    
     bool template_exists(const std::string& template_name);
     std::vector<std::string> available_templates();
+
 private:
     std::expected<void, std::string> resolve_template_impl(const std::string& template_name, const InputCallback& input_cb, const MissingVarCallback& missing_var_cb, EktTemplateResult& out);
 
-    void get_user_input_variables(Context& context, const Template& selected_template, const InputCallback& input_cb);
-    void get_missing_variables(Context& context, const Template& selected_template, const ParsedTemplateString& parsed_template, const MissingVarCallback& missing_var_cb);
-    std::expected<void, std::string> resolve_functions(Context& context, const Template& selected_template);
+    void get_user_input_variables(Context& context, const LuaTemplate& selected_template, const InputCallback& input_cb);
+    void get_missing_variables(Context& context, const LuaTemplate& selected_template, const ParsedTemplateString& parsed_template, const MissingVarCallback& missing_var_cb);
+    std::expected<void, std::string> resolve_functions(Context& context, const LuaTemplate& selected_template);
 
-    std::unordered_map<std::string, Template> m_templates;
+    std::unordered_map<std::string, LuaTemplate> m_templates;
     Context m_global_context;
-    
 };
+
+}

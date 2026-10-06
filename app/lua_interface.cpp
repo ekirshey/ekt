@@ -7,10 +7,10 @@
 #include <cctype>
 #include <iostream>
 
-#include "Template.h"
+#include "lua_template.h"
 #include "Context.h"
 #include "utils.h"
-#include "Ekt.h"
+#include "lua_resolver.h"
 
 namespace fs = std::filesystem;
 
@@ -28,7 +28,7 @@ namespace
     const char* get_script_dir = "get_script_dir";
     const char* get_platform = "get_platform";
 
-    // Template Interface
+    // LuaTemplate Interface
     const char* add_component = "add_component";
     const char* add_key_value = "add_key_value";
     const char* add_user_input_var = "add_user_input_var";
@@ -57,12 +57,15 @@ std::expected<void, std::string> ekt::LuaInterface::execute()
     return {};
 }
 
-void ekt::LuaInterface::build(Ekt& ekt)
+namespace ekt
+{
+
+void LuaInterface::build(LuaResolver& ekt)
 {
     m_lua.open_libraries(sol::lib::base);
 
     sol::table ekt_table = m_lua.create_named_table(root_table);
-    ekt_table[add_template] = [&ekt](const std::string& name, const Template& ekt_template)
+    ekt_table[add_template] = [&ekt](const std::string& name, const LuaTemplate& ekt_template)
         {
             ekt.add_template(name, ekt_template);
         };
@@ -140,10 +143,10 @@ void ekt::LuaInterface::build(Ekt& ekt)
         }
     );
 
-    m_lua.new_usertype<Template>("Template",
-        sol::constructors<Template()>(),
+    m_lua.new_usertype<LuaTemplate>("Template",
+        sol::constructors<LuaTemplate()>(),
 
-        add_component, [](Template& t, const std::string& input_file, const std::string& output_file)
+        add_component, [](LuaTemplate& t, const std::string& input_file, const std::string& output_file)
         {
             //TODO I don't want to uppercase the whole output, just the variables, if any
             t.components.push_back({
@@ -152,14 +155,14 @@ void ekt::LuaInterface::build(Ekt& ekt)
                 });
         },
 
-        add_key_value, [](Template& t, const std::string& key, const std::string& value)
+        add_key_value, [](LuaTemplate& t, const std::string& key, const std::string& value)
         {
             t.context.insert(key, value);
         },
 
-        add_user_input_var, [](Template& t, const std::string& key, const std::string& default_value)
+        add_user_input_var, [](LuaTemplate& t, const std::string& key, const std::string& default_value)
         {
-            TemplateInputVariable input;
+            LuaTemplateInputVariable input;
             input.name = utils::to_upper(key);
             if (!default_value.empty())
             {
@@ -168,7 +171,7 @@ void ekt::LuaInterface::build(Ekt& ekt)
             t.user_input.push_back(input);
         },
 
-        add_function_var, [](Template& t, const std::string& key, sol::protected_function command)
+        add_function_var, [](LuaTemplate& t, const std::string& key, sol::protected_function command)
         {
             t.functions[utils::to_upper(key)] =
                 [command](Context& context) -> std::expected<std::string, std::string>
@@ -190,12 +193,12 @@ void ekt::LuaInterface::build(Ekt& ekt)
                 };
         },
 
-        add_post_command, [](Template& t, const std::string& command)
+        add_post_command, [](LuaTemplate& t, const std::string& command)
         {
             t.post_commands.push_back(command);
         },
 
-        add_chained_template, [](Template& t, const std::string& template_name)
+        add_chained_template, [](LuaTemplate& t, const std::string& template_name)
         {
             t.chained_templates.push_back(template_name);
         }
@@ -225,4 +228,6 @@ std::expected<void, std::string> ekt::LuaInterface::load_script_file(const std::
     current_script.clear();
 
     return {};
+}
+
 }

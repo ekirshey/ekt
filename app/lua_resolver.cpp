@@ -1,10 +1,12 @@
-#include "Ekt.h"
+#include "lua_resolver.h"
 #include <fstream>
 #include <ranges>
 #include "ParsedTemplateString.h"
-#include "Template.h"
 #include "utils.h"
 
+namespace ekt
+{
+    
 namespace
 {
     bool get_input_file_content(const std::string& input_file, std::string& contents)
@@ -29,7 +31,7 @@ namespace
         ParsedTemplateString output_file;
     };
 
-    std::expected<void, std::string> create_parsed_component(TemplateComponent& component, ParsedTemplateComponent& p)
+    std::expected<void, std::string> create_parsed_component(LuaTemplateComponent& component, ParsedTemplateComponent& p)
     {
         std::string file_contents;
         if(!get_input_file_content(component.input_file, file_contents))
@@ -56,21 +58,17 @@ namespace
     }
 }
 
-Ekt::Ekt()
-{
-}
-
-void Ekt::add_template(const std::string& name, const Template& ekt_template)
+void LuaResolver::add_template(const std::string& name, const LuaTemplate& ekt_template)
 {
     m_templates.insert({name, ekt_template});
 }
 
-void Ekt::add_global_var(const std::string& key, const std::string& value)
+void LuaResolver::add_global_var(const std::string& key, const std::string& value)
 {
     m_global_context.insert(key, value);
 }
 
-Ekt::Result Ekt::resolve_template(const std::string& template_name, const InputCallback& input_cb, const MissingVarCallback& missing_var_cb)
+LuaResolver::Result LuaResolver::resolve_template(const std::string& template_name, const InputCallback& input_cb, const MissingVarCallback& missing_var_cb)
 {
     EktTemplateResult resolved;
 
@@ -82,18 +80,18 @@ Ekt::Result Ekt::resolve_template(const std::string& template_name, const InputC
     return resolved;
 }
 
-bool Ekt::template_exists(const std::string& template_name)
+bool LuaResolver::template_exists(const std::string& template_name)
 {
     return m_templates.contains(template_name);
 }
 
-std::vector<std::string> Ekt::available_templates()
+std::vector<std::string> LuaResolver::available_templates()
 {
     auto kv = std::views::keys(m_templates);
     return std::vector<std::string>(kv.begin(), kv.end());
 }
 
-std::expected<void, std::string> Ekt::resolve_template_impl(const std::string& template_name, const InputCallback& input_cb, const MissingVarCallback& missing_var_cb, EktTemplateResult& out)
+std::expected<void, std::string> LuaResolver::resolve_template_impl(const std::string& template_name, const InputCallback& input_cb, const MissingVarCallback& missing_var_cb, EktTemplateResult& out)
 {
     if (!m_templates.contains(template_name))
     {
@@ -173,7 +171,7 @@ std::expected<void, std::string> Ekt::resolve_template_impl(const std::string& t
     return {};
 }
 
-void Ekt::get_user_input_variables(Context& context, const Template& selected_template, const InputCallback& input_cb)
+void LuaResolver::get_user_input_variables(Context& context, const LuaTemplate& selected_template, const InputCallback& input_cb)
 {
     for(const auto& user_input : selected_template.user_input)
     {
@@ -181,7 +179,7 @@ void Ekt::get_user_input_variables(Context& context, const Template& selected_te
     }
 }
 
-void Ekt::get_missing_variables(Context& context, const Template& selected_template, const ParsedTemplateString& parsed_template, const MissingVarCallback& missing_var_cb)
+void LuaResolver::get_missing_variables(Context& context, const LuaTemplate& selected_template, const ParsedTemplateString& parsed_template, const MissingVarCallback& missing_var_cb)
 {
     const auto& found_variables = parsed_template.variables();
     for(const auto& loc : found_variables)
@@ -196,7 +194,7 @@ void Ekt::get_missing_variables(Context& context, const Template& selected_templ
     }
 }
 
-std::expected<void, std::string>  Ekt::resolve_functions(Context& context, const Template& selected_template)
+std::expected<void, std::string>  LuaResolver::resolve_functions(Context& context, const LuaTemplate& selected_template)
 {
     for(auto& [k,v] : selected_template.functions)
     {
@@ -210,4 +208,6 @@ std::expected<void, std::string>  Ekt::resolve_functions(Context& context, const
     }
 
     return {};
+}
+
 }

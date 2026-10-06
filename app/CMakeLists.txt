@@ -7,6 +7,9 @@ find_path(SOL2_INCLUDE_DIRS "sol/abort.hpp")
 set(EKT_LUA_SOURCE
     lua_interface.cpp
     lua_interface.h
+    lua_template.h
+    lua_resolver.h
+    lua_resolver.cpp
 )
 
 add_library(ekt_lua STATIC ${EKT_LUA_SOURCE})

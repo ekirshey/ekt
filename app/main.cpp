@@ -3,7 +3,8 @@
 #include <fstream>
 
 #include "CommandLine.h"
-#include "Ekt.h"
+#include "lua_resolver.h"
+#include "lua_template.h"
 #include "Config.h"
 #include "lua_interface.h"
 
@@ -16,7 +17,7 @@
     #define PCLOSE pclose
 #endif
 
-std::string get_input(const TemplateInputVariable& user_input)
+std::string get_input(const ekt::LuaTemplateInputVariable& user_input)
 {
     bool has_default = !user_input.default_value.empty();
     std::string default_value = has_default ? "[Default: " + user_input.default_value + "]" : "";
@@ -70,7 +71,7 @@ std::expected<void, std::string> load_script_file(ekt::LuaInterface& interface, 
 
 int main(int argc, char* argv[])
 {
-    Ekt ekt;
+    ekt::LuaResolver ekt;
 
     ekt::LuaInterface ekt_lua_interface;
     ekt_lua_interface.build(ekt);

@@ -4,21 +4,24 @@
 #include <expected>
 #include <filesystem>
 
-class Ekt;
 class Context;
 
 namespace ekt
 {
-    class LuaInterface
-    {
-    public:
-        void build(Ekt& ekt);
-        std::expected<void, std::string> load_script_file(const std::filesystem::path& script);
 
-        inline static const std::string script_ext = "ekt.lua";
-    private:
-        std::expected<void, std::string> execute();
+class LuaResolver;
 
-        sol::state m_lua;
-    };
+class LuaInterface
+{
+public:
+    void build(LuaResolver& ekt);
+    std::expected<void, std::string> load_script_file(const std::filesystem::path& script);
+
+    inline static const std::string script_ext = "ekt.lua";
+private:
+    std::expected<void, std::string> execute();
+
+    sol::state m_lua;
+};
+
 }
