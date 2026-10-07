@@ -4,12 +4,11 @@
 #include <expected>
 #include <filesystem>
 
-class Context;
-
 namespace ekt
 {
 
 class LuaResolver;
+class Context;
 
 class LuaInterface
 {

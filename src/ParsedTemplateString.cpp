@@ -7,6 +7,8 @@
 #include "ParsedTemplateString.h"
 #include "utils.h"
 
+namespace ekt
+{
 namespace
 {
     const std::string template_start = "![[";
@@ -106,4 +108,5 @@ std::string ParsedTemplateString::get_variable(const VariableLocation& location)
     const int start = location.start + template_start.length();
     const int length = location.end - template_end.length() - start;
     return utils::to_upper(std::string(m_content.data() + start, length));
+}
 }

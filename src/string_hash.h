@@ -2,6 +2,8 @@
 
 #include <string_view>
 
+namespace ekt
+{
 struct string_hash
 {
     using is_transparent = void;
@@ -10,3 +12,4 @@ struct string_hash
         return std::hash<std::string_view>{}(sv);
     }
 };
+}

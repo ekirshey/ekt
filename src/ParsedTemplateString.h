@@ -7,6 +7,8 @@
 
 #include "Context.h"
 
+namespace ekt
+{
 class ParsedTemplateString
 {
 public:
@@ -29,3 +31,4 @@ private:
     std::string m_content;
     std::vector<VariableLocation> m_variableLocations;
 };
+}

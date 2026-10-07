@@ -3,6 +3,8 @@
 #include "string_hash.h"
 #include <string>
 
+namespace ekt
+{
 // struct wrapper to standardize keys
 class Context
 {
@@ -16,3 +18,4 @@ public:
 private:
     std::unordered_map<std::string, std::string, string_hash, std::equal_to<>> m_data;
 };
+}

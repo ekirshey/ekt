@@ -11,6 +11,9 @@
 // contents. test_lua_interface.cpp covers the same machinery end to end through
 // the Lua bindings; here we pin down the substitution rules in isolation.
 
+
+using namespace ekt;
+
 namespace
 {
     // Builds a context from key/value pairs. Context upper-cases keys on insert,
