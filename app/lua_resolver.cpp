@@ -65,7 +65,7 @@ void LuaResolver::add_template(const std::string& name, const LuaTemplate& ekt_t
 
 void LuaResolver::add_global_var(const std::string& key, const std::string& value)
 {
-    m_global_context.insert(key, value);
+    m_global_context.set(key, value);
 }
 
 LuaResolver::Result LuaResolver::resolve_template(const std::string& template_name, const InputCallback& input_cb, const MissingVarCallback& missing_var_cb)
@@ -102,7 +102,7 @@ std::expected<void, std::string> LuaResolver::resolve_template_impl(const std::s
 
     Context context;
     context = selected_template.context;
-    context.insert(m_global_context);
+    context.concat(m_global_context, ekt::ResolveMode::Overwrite);
 
     std::vector<ParsedTemplateComponent> parsed_components;
     parsed_components.resize(selected_template.components.size());
@@ -175,7 +175,7 @@ void LuaResolver::get_user_input_variables(Context& context, const LuaTemplate& 
 {
     for(const auto& user_input : selected_template.user_input)
     {
-        context.insert(user_input.name, input_cb(user_input));
+        context.set(user_input.name, input_cb(user_input));
     }
 }
 
@@ -190,7 +190,7 @@ void LuaResolver::get_missing_variables(Context& context, const LuaTemplate& sel
             continue;
         }
 
-        context.insert(v, missing_var_cb(v));
+        context.set(v, missing_var_cb(v));
     }
 }
 
@@ -204,7 +204,7 @@ std::expected<void, std::string>  LuaResolver::resolve_functions(Context& contex
             return std::unexpected(result.error());
         }
 
-        context.insert(k, result.value());
+        context.set(k, result.value());
     }
 
     return {};

@@ -1,13 +1,56 @@
 #include "utils.h"
 
+#include "ekt_defines.h"
 #include <algorithm>
+#include <unordered_map>
 
 namespace ekt
 {
+
 std::string utils::to_upper(const std::string& in)
 {
     std::string upper = in;
     std::transform(upper.begin(), upper.end(), upper.begin(), ::toupper);
     return upper;
 }
+
+std::optional<std::size_t> utils::find_template_end(std::string_view str, std::size_t offset, const std::string& template_start, const std::string& template_end)
+{
+    int open_count = 0;
+    size_t end;
+
+    size_t i = offset;
+    while(true)
+    {
+        const auto next_start = str.find(template_start, i);
+        const auto temp_end = str.find(template_end, i);
+        if (next_start != std::string_view::npos && next_start < temp_end)
+        {
+            open_count++;
+            i = next_start + template_start.size();
+            continue;
+        }
+
+        end = temp_end;
+        if (end == std::string_view::npos)
+        {
+            return std::nullopt;
+        }
+
+        open_count--;
+        if (open_count == 0)
+        {
+            break;
+        }
+        // End before open
+        if (open_count < 0)
+        {
+            return std::nullopt;
+        }
+        i = end + key_template_end.size();
+    }
+
+    return end;
+}
+
 }

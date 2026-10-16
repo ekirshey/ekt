@@ -1,8 +1,10 @@
 find_package(Catch2 3 REQUIRED)
 
 set(EKT_TEST_SOURCE
+    test_context.cpp
     test_lua_interface.cpp
     test_template_resolution.cpp
+    test_utils.cpp
     TempDir.h
 )
 
@@ -12,6 +14,9 @@ target_link_libraries(ekt_tests PRIVATE
     ekt::ekt_lua
     Catch2::Catch2WithMain
 )
+
+target_compile_definitions(ekt_tests PRIVATE
+  CATCH_CONFIG_ENABLE_OPTIONAL_STRINGMAKER)
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${EKT_TEST_SOURCE})
 

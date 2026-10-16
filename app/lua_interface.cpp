@@ -134,7 +134,7 @@ void LuaInterface::build(LuaResolver& ekt)
             {
                 return std::nullopt;
             }
-            auto value = context.get(upper_case_key);
+            auto value = context.get_value(upper_case_key);
             if (value.size() == 0)
             {
                 return std::nullopt;
@@ -157,7 +157,7 @@ void LuaInterface::build(LuaResolver& ekt)
 
         add_key_value, [](LuaTemplate& t, const std::string& key, const std::string& value)
         {
-            t.context.insert(key, value);
+            t.context.set(key, value);
         },
 
         add_user_input_var, [](LuaTemplate& t, const std::string& key, const std::string& default_value)

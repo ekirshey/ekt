@@ -1,11 +1,14 @@
 set(EKT_LIB_SOURCE
     Context.cpp
     Context.h
+    Scope.cpp
+    Scope.h
     utils.cpp
     utils.h
     ParsedTemplateString.cpp
     ParsedTemplateString.h
     string_hash.h
+    ekt_defines.h
 )
 
 add_library(ekt_lib STATIC ${EKT_LIB_SOURCE})
