@@ -173,7 +173,7 @@ TEST_CASE("ekt.add_template registers templates on the Ekt instance", "[lua_inte
 TEST_CASE("ekt.add_global_var values are visible to every template", "[lua_interface]")
 {
     TempDir dir;
-    dir.write("component.ekt", "author=[[! author !]]");
+    dir.write("component.ekt", "author=[[!author!]]");
     auto script = dir.write_script(R"lua(
         function ekt.build()
             local dir = ekt.get_script_dir()
@@ -195,8 +195,8 @@ TEST_CASE("Template bindings drive the resolved output", "[lua_interface]")
 {
     TempDir dir;
     dir.write("component.ekt",
-        "license=[[! license !]] project=[[! project_name !]] greeting=[[! greeting !]] unknown=[[! unknown_var !]]");
-    dir.write("chained.ekt", "chained author=[[! author !]]");
+        "license=[[!license!]] project=[[!project_name!]] greeting=[[!greeting!]] unknown=[[!unknown_var!]]");
+    dir.write("chained.ekt", "chained author=[[!author!]]");
 
     auto script = dir.write_script(R"lua(
         function greeting(context)
@@ -208,11 +208,11 @@ TEST_CASE("Template bindings drive the resolved output", "[lua_interface]")
             ekt.add_global_var("author", "Erik Kirshey")
 
             local main = Template.new()
-            main:add_component(dir .. "/component.ekt", dir .. "/out/[[! project_name !]].txt")
+            main:add_component(dir .. "/component.ekt", dir .. "/out/[[!project_name!]].txt")
             main:add_key_value("license", "MIT")
             main:add_user_input_var("project_name", "default_project")
             main:add_function_var("greeting", greeting)
-            main:add_post_command("echo [[! author !]]")
+            main:add_post_command("echo [[!author!]]")
             main:add_chained_template("extra")
             ekt.add_template("main", main)
 
@@ -238,7 +238,7 @@ TEST_CASE("Template bindings drive the resolved output", "[lua_interface]")
     SECTION("add_user_input_var forwards the name and default to the callback")
     {
         REQUIRE(requested.size() == 1);
-        // Names are upper cased so they line up with the [[! .. !]] lookups
+        // Names are upper cased so they line up with the [[!..!]] lookups
         REQUIRE(requested[0].name == "PROJECT_NAME");
         REQUIRE(requested[0].default_value == "default_project");
     }
@@ -269,7 +269,7 @@ TEST_CASE("Template bindings drive the resolved output", "[lua_interface]")
 TEST_CASE("template functions must return a string", "[lua_interface]")
 {
     TempDir dir;
-    dir.write("component.ekt", "value=[[! value !]]");
+    dir.write("component.ekt", "value=[[!value!]]");
 
     auto script_returning = [&dir](const std::string& body)
         {
@@ -317,7 +317,7 @@ TEST_CASE("template functions must return a string", "[lua_interface]")
 TEST_CASE("Context:get is exposed to template functions", "[lua_interface]")
 {
     TempDir dir;
-    dir.write("component.ekt", "[[! probe !]]");
+    dir.write("component.ekt", "[[!probe!]]");
 
     auto script_looking_up = [&dir](const std::string& key)
         {
@@ -370,7 +370,7 @@ TEST_CASE("Context:get is exposed to template functions", "[lua_interface]")
 TEST_CASE("ekt.get_script_dir returns the directory of the running script", "[lua_interface]")
 {
     TempDir dir;
-    dir.write("component.ekt", "[[! script_dir !]]");
+    dir.write("component.ekt", "[[!script_dir!]]");
     auto script = dir.write_script(R"lua(
         function ekt.build()
             local dir = ekt.get_script_dir()
@@ -391,7 +391,7 @@ TEST_CASE("ekt.get_script_dir returns the directory of the running script", "[lu
 TEST_CASE("ekt.get_platform reports the host platform", "[lua_interface]")
 {
     TempDir dir;
-    dir.write("component.ekt", "[[! platform !]]");
+    dir.write("component.ekt", "[[!platform!]]");
     auto script = dir.write_script(R"lua(
         function ekt.build()
             local dir = ekt.get_script_dir()
@@ -420,7 +420,7 @@ TEST_CASE("ekt.get_platform reports the host platform", "[lua_interface]")
 TEST_CASE("ekt.get_filenames walks a directory", "[lua_interface]")
 {
     TempDir dir;
-    dir.write("component.ekt", "[[! files !]]");
+    dir.write("component.ekt", "[[!files!]]");
     dir.write("src/a.cpp", "");
     dir.write("src/a.h", "");
     dir.write("src/nested/b.cpp", "");
