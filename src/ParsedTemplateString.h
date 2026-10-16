@@ -4,17 +4,10 @@
 #include <string>
 #include <vector>
 #include <expected>
+#include <memory>
 
 #include "Scope.h"
 #include "Context.h"
-
-/*
-...[[HEADERS|    ![[HEADERS.HEADER]]
-]]
-
-==[[CONDITION|
-
-*/
 
 namespace ekt
 {

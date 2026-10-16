@@ -119,7 +119,7 @@ int main(int argc, char* argv[])
     {
         std::ofstream(t.output_path) << t.content;
     }
-     
+
     for(auto& c : ekt_result->post_commands)
     {
         std::cout << "\nRunning command: \n " << c << "\n";
@@ -127,7 +127,7 @@ int main(int argc, char* argv[])
         if (res < 0)
         {
             std::cerr << "Failed to execute command: " << c << "\n";
-            return false;
+            return 1;
         }
         else
         {
