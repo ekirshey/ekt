@@ -13,46 +13,46 @@ namespace ekt
 
 bool Scope::contains(const std::string& key) const
 {
-    auto parsed_key = parse_key(key);
-    if (m_child_contexts.empty() || !parsed_key.has_value() || !m_child_contexts.contains(parsed_key->parent_name))
+    auto parent_key = get_parent_key(key);
+    if (m_child_contexts.empty() || !parent_key.has_value() || !m_child_contexts.contains(*parent_key))
     {
         return m_root_context->contains(key);
     }
 
-    return m_child_contexts.at(parsed_key->parent_name)->contains(parsed_key->identifier);
+    return m_child_contexts.at(*parent_key)->contains(key);
 }
 
 std::string Scope::get_value(const std::string& key) const
 {
-    auto parsed_key = parse_key(key);
-    if (m_child_contexts.empty() || !parsed_key.has_value() || !m_child_contexts.contains(parsed_key->parent_name))
+    auto parent_key = get_parent_key(key);
+    if (m_child_contexts.empty() || !parent_key.has_value() || !m_child_contexts.contains(*parent_key))
     {
         return m_root_context->get_value(key);
     }
 
-    return m_child_contexts.at(parsed_key->parent_name)->get_value(parsed_key->identifier);
+    return m_child_contexts.at(*parent_key)->get_value(key);
 }
 
 bool Scope::get_condition(const std::string& key) const
 {
-    auto parsed_key = parse_key(key);
-    if (m_child_contexts.empty() || !parsed_key.has_value() || !m_child_contexts.contains(parsed_key->parent_name))
+    auto parent_key = get_parent_key(key);
+    if (m_child_contexts.empty() || !parent_key.has_value() || !m_child_contexts.contains(*parent_key))
     {
         return m_root_context->get_condition(key);
     }
 
-    return m_child_contexts.at(parsed_key->parent_name)->get_condition(parsed_key->identifier);
+    return m_child_contexts.at(*parent_key)->get_condition(key);
 }
 
 std::span<const Context> Scope::get_array(const std::string& key) const
 {
-    auto parsed_key = parse_key(key);
-    if (m_child_contexts.empty() || !parsed_key.has_value() || !m_child_contexts.contains(parsed_key->parent_name))
+    auto parent_key = get_parent_key(key);
+    if (m_child_contexts.empty() || !parent_key.has_value() || !m_child_contexts.contains(*parent_key))
     {
         return m_root_context->get_array(key);
     }
 
-    return m_child_contexts.at(parsed_key->parent_name)->get_array(parsed_key->identifier);
+    return m_child_contexts.at(*parent_key)->get_array(key);
 }
 
 void Scope::set_root_context(const Context* context)
@@ -70,7 +70,7 @@ void Scope::remove_child_context(const std::string& parent_name)
     m_child_contexts.erase(utils::to_upper(parent_name));
 }
 
-std::optional<Scope::Key> Scope::parse_key(const std::string& key) const
+std::optional<std::string> Scope::get_parent_key(const std::string& key) const
 {
     if(!key.contains(ownership_delimiter))
     {
@@ -85,10 +85,7 @@ std::optional<Scope::Key> Scope::parse_key(const std::string& key) const
         return std::nullopt;
     }
 
-    return Scope::Key {
-        .parent_name = utils::to_upper(split[0]),
-        .identifier = utils::to_upper(split[1])
-    };
+    return utils::to_upper(split[0]);
 }
 
 

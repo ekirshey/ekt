@@ -267,11 +267,11 @@ TEST_CASE("loop with plain text resolves to text n times", "[resolution]")
 TEST_CASE("loop with child variables resolve from the childs context", "[resolution]")
 {
     Context context;
-    context.append("yo", make_context({{"hi", "0"}}));
-    context.append("yo", make_context({{"hi", "1"}}));
-    context.append("yo", make_context({{"hi", "2"}}));
-    context.append("yo", make_context({{"hi", "3"}}));
-    context.append("yo", make_context({{"hi", "4"}}));
+    context.append("yo", make_context({{"yo.hi", "0"}}));
+    context.append("yo", make_context({{"yo.hi", "1"}}));
+    context.append("yo", make_context({{"yo.hi", "2"}}));
+    context.append("yo", make_context({{"yo.hi", "3"}}));
+    context.append("yo", make_context({{"yo.hi", "4"}}));
 
     auto parsed = ParsedTemplateString::parse(loop("yo", key("yo.hi") + "\n"));
     REQUIRE(parsed->resolve(context) == "0\n1\n2\n3\n4\n");

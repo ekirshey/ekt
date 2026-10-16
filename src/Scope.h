@@ -25,13 +25,7 @@ public:
     void remove_child_context(const std::string& parent_name);
 
 private:
-    struct Key
-    {
-        std::string parent_name;
-        std::string identifier;
-    };
-
-    std::optional<Key> parse_key(const std::string& key) const;
+    std::optional<std::string> get_parent_key(const std::string& key) const;
 
     const Context* m_root_context;
     std::unordered_map<std::string, const Context*> m_child_contexts;
