@@ -11,6 +11,23 @@
 namespace ekt
 {
 
+namespace
+{
+    // Length of the line ending at pos: 1 for "\n", 2 for "\r\n", 0 if there isn't one
+    std::size_t newline_length(const std::string_view& view, std::size_t pos)
+    {
+        if (pos < view.size() && view[pos] == '\n')
+        {
+            return 1;
+        }
+        if (pos + 1 < view.size() && view[pos] == '\r' && view[pos + 1] == '\n')
+        {
+            return 2;
+        }
+        return 0;
+    }
+}
+
 ParsedTemplateString::Result ParsedTemplateString::parse(const std::string_view& content)
 {
     // Empty outputs are fine
@@ -176,7 +193,7 @@ std::optional<TemplateVariable> ParsedTemplateString::parse_label_template(const
             break;
         }
     }
-    const auto label_delim = view.find(label_delimiter, start);
+    auto label_delim = view.find(label_delimiter, start);
     if (label_delim == std::string::npos)
     {
         return std::nullopt;
@@ -193,6 +210,13 @@ std::optional<TemplateVariable> ParsedTemplateString::parse_label_template(const
     }
     std::size_t end = *result;
 
+    // Skip newline after label
+    label_delim += newline_length(view, label_delim + label_delimiter.size());
+
+    // Consume the newline after the closing tag so it doesn't end up in the output
+    std::size_t tag_end = end + end_template.length();
+    tag_end += newline_length(view, tag_end);
+
     auto inner = view.substr(
         label_delim + label_delimiter.size(),
         *result - label_delim - label_delimiter.size());
@@ -205,7 +229,7 @@ std::optional<TemplateVariable> ParsedTemplateString::parse_label_template(const
 
     return TemplateVariable{
         .start = start,
-        .end = end + end_template.length(),
+        .end = tag_end,
         .label = std::string(label),
         .type = type,
         .child = std::make_shared<ParsedTemplateString>(*inner_parse)
@@ -221,7 +245,7 @@ std::string ParsedTemplateString::resolve_key(Scope& scope, const TemplateVariab
     {
         key = var.child->resolve_impl(scope);
     }
-    else 
+    else
     {
         key = get_variable(var);
     }

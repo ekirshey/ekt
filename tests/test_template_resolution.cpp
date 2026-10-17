@@ -35,9 +35,9 @@ namespace
     std::string resolve(const std::string& content, const Context& context)
     {
         auto parsed = ParsedTemplateString::parse(content);
-        if (!parsed) 
-        { 
-            FAIL("Failed to parse: " + content); 
+        if (!parsed)
+        {
+            FAIL("Failed to parse: " + content);
         }
         return parsed->resolve(context);
     }
@@ -251,6 +251,104 @@ TEST_CASE("loop with no elements resolves to empty string", "[resolution]")
     REQUIRE(parsed->resolve(context) == "");
 }
 
+TEST_CASE("newlines after a label are trimmed", "[resolution]")
+{
+    Context context;
+    context.set_condition("HAS_STRING_FIELD", true);
+
+    SECTION("unix line endings")
+    {
+        REQUIRE(resolve(conditional("HAS_STRING_FIELD", "\ntest"), context) == "test");
+    }
+
+    SECTION("windows line endings")
+    {
+        REQUIRE(resolve(conditional("HAS_STRING_FIELD", "\r\ntest"), context) == "test");
+    }
+
+    SECTION("only one newline is trimmed")
+    {
+        REQUIRE(resolve(conditional("HAS_STRING_FIELD", "\n\ntest"), context) == "\ntest");
+    }
+
+    SECTION("a lone carriage return is kept")
+    {
+        REQUIRE(resolve(conditional("HAS_STRING_FIELD", "\rtest"), context) == "\rtest");
+    }
+}
+
+TEST_CASE("newlines after a closing tag are trimmed", "[resolution]")
+{
+    Context context;
+    context.set_condition("yes", true);
+    context.set_condition("no", false);
+
+    SECTION("unix line endings")
+    {
+        REQUIRE(resolve(conditional("yes", "a") + "\nb", context) == "ab");
+        REQUIRE(resolve(conditional("no", "a") + "\nb", context) == "b");
+    }
+
+    SECTION("windows line endings")
+    {
+        REQUIRE(resolve(conditional("yes", "a") + "\r\nb", context) == "ab");
+        REQUIRE(resolve(conditional("no", "a") + "\r\nb", context) == "b");
+    }
+
+    SECTION("only one newline is trimmed")
+    {
+        REQUIRE(resolve(conditional("yes", "a") + "\n\nb", context) == "a\nb");
+    }
+
+    SECTION("closing tag at end of content")
+    {
+        REQUIRE(resolve(conditional("yes", "a") + "\n", context) == "a");
+        REQUIRE(resolve(conditional("yes", "a") + "\r\n", context) == "a");
+    }
+}
+
+TEST_CASE("standalone conditional tags produce one line per true condition", "[resolution]")
+{
+    Context context;
+    context.set_condition("HAS_STRING_FIELD", true);
+    context.set_condition("HAS_VEC2_FIELD", false);
+    context.set_condition("HAS_BLOB_FIELD", true);
+
+    SECTION("unix line endings")
+    {
+        const std::string content =
+            "[[==HAS_STRING_FIELD|\n"
+            "#include <string>\n"
+            "==]]\n"
+            "[[==HAS_VEC2_FIELD|\n"
+            "#include <glm/ext/vector_float2.hpp>\n"
+            "==]]\n"
+            "[[==HAS_BLOB_FIELD|\n"
+            "#include <vector>\n"
+            "#include <cstddef>\n"
+            "==]]\n";
+        REQUIRE(resolve(content, context) ==
+            "#include <string>\n#include <vector>\n#include <cstddef>\n");
+    }
+
+    SECTION("windows line endings")
+    {
+        const std::string content =
+            "[[==HAS_STRING_FIELD|\r\n"
+            "#include <string>\r\n"
+            "==]]\r\n"
+            "[[==HAS_VEC2_FIELD|\r\n"
+            "#include <glm/ext/vector_float2.hpp>\r\n"
+            "==]]\r\n"
+            "[[==HAS_BLOB_FIELD|\r\n"
+            "#include <vector>\r\n"
+            "#include <cstddef>\r\n"
+            "==]]\r\n";
+        REQUIRE(resolve(content, context) ==
+            "#include <string>\r\n#include <vector>\r\n#include <cstddef>\r\n");
+    }
+}
+
 TEST_CASE("loop with plain text resolves to text n times", "[resolution]")
 {
     Context context;
@@ -275,4 +373,24 @@ TEST_CASE("loop with child variables resolve from the childs context", "[resolut
 
     auto parsed = ParsedTemplateString::parse(loop("yo", key("yo.hi") + "\n"));
     REQUIRE(parsed->resolve(context) == "0\n1\n2\n3\n4\n");
+}
+
+TEST_CASE("standalone loop tags produce one line per element", "[resolution]")
+{
+    Context context;
+    context.append("yo", make_context({{"yo.hi", "0"}}));
+    context.append("yo", make_context({{"yo.hi", "1"}}));
+    context.append("yo", make_context({{"yo.hi", "2"}}));
+
+    SECTION("unix line endings")
+    {
+        const auto content = "before\n" + loop("yo", "\n" + key("yo.hi") + "\n") + "\nafter";
+        REQUIRE(resolve(content, context) == "before\n0\n1\n2\nafter");
+    }
+
+    SECTION("windows line endings")
+    {
+        const auto content = "before\r\n" + loop("yo", "\r\n" + key("yo.hi") + "\r\n") + "\r\nafter";
+        REQUIRE(resolve(content, context) == "before\r\n0\r\n1\r\n2\r\nafter");
+    }
 }
