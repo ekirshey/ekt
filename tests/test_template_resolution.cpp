@@ -244,11 +244,27 @@ TEST_CASE("loop parses correctly", "[resolution]")
     REQUIRE(ParsedTemplateString::parse(loop("yo", "hi")));
 }
 
-TEST_CASE("loop with no elements resolves to empty string", "[resolution]")
+TEST_CASE("loop with plain text resolves correctly", "[resolution]")
 {
     Context context;
-    auto parsed = ParsedTemplateString::parse(loop("yo", "hi"));
-    REQUIRE(parsed->resolve(context) == "");
+    context.append("yo", {});
+    context.append("yo", {});
+    context.append("yo", {});
+    context.append("yo", {});
+    context.append("yo", {});
+
+    SECTION("No elements is empty")
+    {
+        auto parsed = ParsedTemplateString::parse(loop("empty", "hi"));
+        REQUIRE(parsed->resolve(context) == "");
+    }
+
+    SECTION("Expands n times")
+    {
+        auto parsed = ParsedTemplateString::parse(loop("yo", "hi\n"));
+        REQUIRE(parsed->resolve(context) == "hi\nhi\nhi\nhi\nhi\n");
+    }
+
 }
 
 TEST_CASE("newlines after a label are trimmed", "[resolution]")
@@ -347,19 +363,6 @@ TEST_CASE("standalone conditional tags produce one line per true condition", "[r
         REQUIRE(resolve(content, context) ==
             "#include <string>\r\n#include <vector>\r\n#include <cstddef>\r\n");
     }
-}
-
-TEST_CASE("loop with plain text resolves to text n times", "[resolution]")
-{
-    Context context;
-    context.append("yo", {});
-    context.append("yo", {});
-    context.append("yo", {});
-    context.append("yo", {});
-    context.append("yo", {});
-
-    auto parsed = ParsedTemplateString::parse(loop("yo", "hi\n"));
-    REQUIRE(parsed->resolve(context) == "hi\nhi\nhi\nhi\nhi\n");
 }
 
 TEST_CASE("loop with child variables resolve from the childs context", "[resolution]")

@@ -35,9 +35,7 @@ public:
     ParsedTemplateString() = default;
 
     using Result = std::expected<ParsedTemplateString, bool>;
-    //static Result parse(const std::string_view& content);
     static Result parse(const std::string_view& content);
-    //std::string resolve(const Context& context) const;
     std::string resolve(const Context& context) const;
 
     const std::vector<TemplateVariable>& variables() const;
