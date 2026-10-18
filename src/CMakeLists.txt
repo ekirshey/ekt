@@ -1,6 +1,8 @@
 set(EKT_LIB_SOURCE
     Context.cpp
     Context.h
+    evaluator.cpp
+    evaluator.h
     Scope.cpp
     Scope.h
     utils.cpp

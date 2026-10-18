@@ -1,4 +1,5 @@
 #pragma once
+#include <expected>
 #include <unordered_map>
 #include <string>
 #include <span>
@@ -15,7 +16,6 @@ public:
     bool contains(const std::string& key) const;
 
     std::string get_value(const std::string& key) const;
-    bool get_condition(const std::string& key) const;
     std::span<const Context> get_array(const std::string& key) const;
     std::string get_array_value(const std::string key, int idx) const;
 

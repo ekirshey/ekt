@@ -1,5 +1,6 @@
 #include "Scope.h"
 #include <iostream>
+#include <list>
 #include <ranges>
 #include <string_view>
 #include <vector>
@@ -31,17 +32,6 @@ std::string Scope::get_value(const std::string& key) const
     }
 
     return m_child_contexts.at(*parent_key)->get_value(key);
-}
-
-bool Scope::get_condition(const std::string& key) const
-{
-    auto parent_key = get_parent_key(key);
-    if (m_child_contexts.empty() || !parent_key.has_value() || !m_child_contexts.contains(*parent_key))
-    {
-        return m_root_context->get_condition(key);
-    }
-
-    return m_child_contexts.at(*parent_key)->get_condition(key);
 }
 
 std::span<const Context> Scope::get_array(const std::string& key) const
@@ -77,7 +67,7 @@ std::optional<std::string> Scope::get_parent_key(const std::string& key) const
         return std::nullopt;
     }
 
-    auto split = std::views::split(key, std::string_view(ownership_delimiter)) 
+    auto split = std::views::split(key, std::string_view(ownership_delimiter))
             | std::ranges::to<std::vector<std::string>>();
 
     if (split.size() != 2)

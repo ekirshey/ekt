@@ -24,11 +24,9 @@ public:
     void concat(const Context& context, ResolveMode mode);
 
     bool set(const std::string& key, const std::string& value);
-    bool set_condition(const std::string& key, bool value);
     bool append(const std::string& key, const Context& value);
 
     std::string get_value(const std::string& key) const;
-    bool get_condition(const std::string& key) const;
     std::span<const Context> get_array(const std::string& key) const;
 
 private:
@@ -41,7 +39,6 @@ struct ContextValue
 {
     std::string value;
     std::vector<Context> array;
-    bool condition = false;
 };
 
 }

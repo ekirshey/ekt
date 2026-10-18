@@ -2,11 +2,13 @@
 #include <optional>
 #include <string>
 #include <string_view>
-#include <iostream>
 
 #include "ParsedTemplateString.h"
+#include "evaluator.h"
 #include "utils.h"
 #include "ekt_defines.h"
+
+#include <iostream>
 
 namespace ekt
 {
@@ -56,14 +58,14 @@ ParsedTemplateString::Result ParsedTemplateString::parse(const std::string_view&
             bool cond_found = cond_start == conditional_template_start;
             if(cond_found)
             {
-                result = parse_label_template(content, pos, VariableType::Conditional);
+                result = parse_predicate_template(content, pos, VariableType::Conditional);
             }
 
             const auto loop_start = content.substr(pos, loop_template_start.size());
             bool loop_found = loop_start == loop_template_start;
             if(loop_found)
             {
-                result = parse_label_template(content, pos,  VariableType::Loop);
+                result = parse_predicate_template(content, pos,  VariableType::Loop);
             }
 
             if (key_found || cond_found || loop_found)
@@ -172,7 +174,7 @@ std::optional<TemplateVariable> ParsedTemplateString::parse_key_template(const s
     };
 }
 
-std::optional<TemplateVariable> ParsedTemplateString::parse_label_template(const std::string_view& view, size_t start, VariableType type)
+std::optional<TemplateVariable> ParsedTemplateString::parse_predicate_template(const std::string_view& view, size_t start, VariableType type)
 {
     std::string start_template;
     std::string end_template;
@@ -193,15 +195,15 @@ std::optional<TemplateVariable> ParsedTemplateString::parse_label_template(const
             break;
         }
     }
-    auto label_delim = view.find(label_delimiter, start);
-    if (label_delim == std::string::npos)
+    auto pred_delim = view.find(pred_delimiter, start);
+    if (pred_delim == std::string::npos)
     {
         return std::nullopt;
     }
 
-    auto label = view.substr(
+    auto predicate = view.substr(
         start + start_template.length(),
-        label_delim - start - end_template.length());
+        pred_delim - start - end_template.length());
 
     const auto result = utils::find_template_end(view, start, start_template, end_template);
     if(!result)
@@ -210,16 +212,16 @@ std::optional<TemplateVariable> ParsedTemplateString::parse_label_template(const
     }
     std::size_t end = *result;
 
-    // Skip newline after label
-    label_delim += newline_length(view, label_delim + label_delimiter.size());
+    // Skip newline after predicate
+    pred_delim += newline_length(view, pred_delim + pred_delimiter.size());
 
     // Consume the newline after the closing tag so it doesn't end up in the output
     std::size_t tag_end = end + end_template.length();
     tag_end += newline_length(view, tag_end);
 
     auto inner = view.substr(
-        label_delim + label_delimiter.size(),
-        *result - label_delim - label_delimiter.size());
+        pred_delim + pred_delimiter.size(),
+        *result - pred_delim - pred_delimiter.size());
 
     auto inner_parse = parse(inner);
     if(!inner_parse.has_value())
@@ -230,7 +232,7 @@ std::optional<TemplateVariable> ParsedTemplateString::parse_label_template(const
     return TemplateVariable{
         .start = start,
         .end = tag_end,
-        .label = std::string(label),
+        .predicate = std::string(predicate),
         .type = type,
         .child = std::make_shared<ParsedTemplateString>(*inner_parse)
     };
@@ -255,7 +257,7 @@ std::string ParsedTemplateString::resolve_key(Scope& scope, const TemplateVariab
 
 std::string ParsedTemplateString::resolve_conditional(Scope& scope, const TemplateVariable& var) const
 {
-    if(!scope.get_condition(var.label))
+    if(!evaluate_condition(scope, var.predicate))
     {
         return "";
     }
@@ -264,7 +266,7 @@ std::string ParsedTemplateString::resolve_conditional(Scope& scope, const Templa
 
 std::string ParsedTemplateString::resolve_loop(Scope& scope, const TemplateVariable& var) const
 {
-    auto arr = scope.get_array(var.label);
+    auto arr = scope.get_array(var.predicate);
     if (arr.empty())
     {
         return "";
@@ -273,9 +275,9 @@ std::string ParsedTemplateString::resolve_loop(Scope& scope, const TemplateVaria
     std::string result;
     for(auto& a : arr)
     {
-        scope.add_child_context(var.label, &a);
+        scope.add_child_context(var.predicate, &a);
         result += var.child->resolve_impl(scope);
-        scope.remove_child_context(var.label);
+        scope.remove_child_context(var.predicate);
     }
     return result;
 }

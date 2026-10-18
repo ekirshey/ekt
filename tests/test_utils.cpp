@@ -8,7 +8,7 @@
 
 using namespace ekt;
 
-namespace 
+namespace
 {
     std::string key(const std::string& value)
     {
@@ -17,8 +17,40 @@ namespace
 
     std::string conditional(const std::string& label, const std::string& value)
     {
-        return std::format("{}{}{}{}{}", conditional_template_start, label, label_delimiter, value, conditional_template_end);
+        return std::format("{}{}{}{}{}", conditional_template_start, label, pred_delimiter, value, conditional_template_end);
     }
+}
+
+TEST_CASE("trim removes leading and trailing whitespace", "[utils]")
+{
+    REQUIRE(utils::trim("  test  ") == "test");
+    REQUIRE(utils::trim("\t\r\ntest\r\n\t") == "test");
+    REQUIRE(utils::trim("   test") == "test");
+    REQUIRE(utils::trim("test   ") == "test");
+}
+
+TEST_CASE("trim keeps inner whitespace", "[utils]")
+{
+    REQUIRE(utils::trim("  a b\tc  ") == "a b\tc");
+}
+
+TEST_CASE("trim leaves strings without outer whitespace unchanged", "[utils]")
+{
+    REQUIRE(utils::trim("test") == "test");
+    REQUIRE(utils::trim("t") == "t");
+}
+
+TEST_CASE("trim of empty or all whitespace strings is empty", "[utils]")
+{
+    REQUIRE(utils::trim("").empty());
+    REQUIRE(utils::trim(" \t\r\n\f\v").empty());
+}
+
+TEST_CASE("trim returns a view into the input", "[utils]")
+{
+    const std::string input = "  test  ";
+    const auto trimmed = utils::trim(input);
+    REQUIRE(trimmed.data() == input.data() + 2);
 }
 
 TEST_CASE("an empty template string returns nullopt", "[utils]")
@@ -106,7 +138,7 @@ TEST_CASE("conditional template returns correct end position", "[utils]")
 {
     const std::string label = "erik";
     const std::string body = "body";
-    const size_t target = conditional_template_start.size() + label.size() + label_delimiter.size() + body.size();
+    const size_t target = conditional_template_start.size() + label.size() + pred_delimiter.size() + body.size();
     REQUIRE(utils::find_template_end(conditional(label, body), 0, conditional_template_start, conditional_template_end) == target);
 }
 
@@ -114,7 +146,7 @@ TEST_CASE("conditional template with nested key returns correct end position", "
 {
     const std::string label = "erik";
     const std::string body = key("body");
-    const size_t target = conditional_template_start.size() + label.size() + label_delimiter.size() + body.size();
+    const size_t target = conditional_template_start.size() + label.size() + pred_delimiter.size() + body.size();
     REQUIRE(utils::find_template_end(conditional(label, body), 0, conditional_template_start, conditional_template_end) == target);
 }
 
@@ -122,6 +154,6 @@ TEST_CASE("conditional template with nested conditional returns correct end posi
 {
     const std::string label = "erik";
     const std::string body = conditional("nested", "body");
-    const size_t target = conditional_template_start.size() + label.size() + label_delimiter.size() + body.size();
+    const size_t target = conditional_template_start.size() + label.size() + pred_delimiter.size() + body.size();
     REQUIRE(utils::find_template_end(conditional(label, body), 0, conditional_template_start, conditional_template_end) == target);
 }

@@ -47,14 +47,14 @@ namespace
         return std::format("{}{}{}", key_template_start, value, key_template_end);
     }
 
-    std::string conditional(const std::string& label, const std::string& value)
+    std::string comparison(const std::string& a, const std::string b, const std::string& value)
     {
-        return std::format("{}{}{}{}{}", conditional_template_start, label, label_delimiter, value, conditional_template_end);
+        return std::format("{}{}=={}{}{}{}", conditional_template_start, a, b, pred_delimiter, value, conditional_template_end);
     }
 
     std::string loop(const std::string& label, const std::string& value)
     {
-        return std::format("{}{}{}{}{}", loop_template_start, label, label_delimiter, value, loop_template_end);
+        return std::format("{}{}{}{}{}", loop_template_start, label, pred_delimiter, value, loop_template_end);
     }
 }
 
@@ -198,24 +198,24 @@ TEST_CASE("variables() reports the parsed markers", "[resolution]")
 
 TEST_CASE("conditional with true condition parses correctly", "[resolution]")
 {
-    REQUIRE(ParsedTemplateString::parse(conditional("yo", "hi")));
+    REQUIRE(ParsedTemplateString::parse(comparison("yo", "hi", "hi")));
 }
 
 TEST_CASE("conditional with true condition resolves to inner text", "[resolution]")
 {
     Context context;
-    context.set_condition("yo", true);
+    context.set("yo", "true");
     context.set("key", "test");
 
     SECTION("resolves plain text")
     {
-        auto parsed = ParsedTemplateString::parse(conditional("yo", "hi"));
+        auto parsed = ParsedTemplateString::parse(comparison("yo", "\"true\"", "hi"));
         REQUIRE(parsed->resolve(context) == "hi");
     }
 
     SECTION("resolves inner key")
     {
-        auto parsed = ParsedTemplateString::parse(conditional("yo", key("key")));
+        auto parsed = ParsedTemplateString::parse(comparison("yo", "\"true\"", key("key")));
         REQUIRE(parsed->resolve(context) == "test");
     }
 }
@@ -223,18 +223,17 @@ TEST_CASE("conditional with true condition resolves to inner text", "[resolution
 TEST_CASE("conditional with false condition resolves to empty text", "[resolution]")
 {
     Context context;
-    context.set_condition("yo", false);
     context.set("key", "test");
 
     SECTION("empty plain text")
     {
-        auto parsed = ParsedTemplateString::parse(conditional("yo", "hi"));
+        auto parsed = ParsedTemplateString::parse(comparison("yo", "\"true\"", "hi"));
         REQUIRE(parsed->resolve(context) == "");
     }
 
     SECTION("empty inner key")
     {
-        auto parsed = ParsedTemplateString::parse(conditional("yo", key("key")));
+        auto parsed = ParsedTemplateString::parse(comparison("yo", "\"true\"", key("key")));
         REQUIRE(parsed->resolve(context) == "");
     }
 }
@@ -270,79 +269,77 @@ TEST_CASE("loop with plain text resolves correctly", "[resolution]")
 TEST_CASE("newlines after a label are trimmed", "[resolution]")
 {
     Context context;
-    context.set_condition("HAS_STRING_FIELD", true);
+    context.set("HAS_STRING_FIELD", "true");
 
     SECTION("unix line endings")
     {
-        REQUIRE(resolve(conditional("HAS_STRING_FIELD", "\ntest"), context) == "test");
+        REQUIRE(resolve(comparison("HAS_STRING_FIELD", "\"true\"", "\ntest"), context) == "test");
     }
 
     SECTION("windows line endings")
     {
-        REQUIRE(resolve(conditional("HAS_STRING_FIELD", "\r\ntest"), context) == "test");
+        REQUIRE(resolve(comparison("HAS_STRING_FIELD", "\"true\"", "\r\ntest"), context) == "test");
     }
 
     SECTION("only one newline is trimmed")
     {
-        REQUIRE(resolve(conditional("HAS_STRING_FIELD", "\n\ntest"), context) == "\ntest");
+        REQUIRE(resolve(comparison("HAS_STRING_FIELD", "\"true\"", "\n\ntest"), context) == "\ntest");
     }
 
     SECTION("a lone carriage return is kept")
     {
-        REQUIRE(resolve(conditional("HAS_STRING_FIELD", "\rtest"), context) == "\rtest");
+        REQUIRE(resolve(comparison("HAS_STRING_FIELD", "\"true\"", "\rtest"), context) == "\rtest");
     }
 }
 
 TEST_CASE("newlines after a closing tag are trimmed", "[resolution]")
 {
     Context context;
-    context.set_condition("yes", true);
-    context.set_condition("no", false);
+    context.set("yes", "true");
 
     SECTION("unix line endings")
     {
-        REQUIRE(resolve(conditional("yes", "a") + "\nb", context) == "ab");
-        REQUIRE(resolve(conditional("no", "a") + "\nb", context) == "b");
+        REQUIRE(resolve(comparison("yes", "\"true\"", "a") + "\nb", context) == "ab");
+        REQUIRE(resolve(comparison("no", "\"true\"", "a") + "\nb", context) == "b");
     }
 
     SECTION("windows line endings")
     {
-        REQUIRE(resolve(conditional("yes", "a") + "\r\nb", context) == "ab");
-        REQUIRE(resolve(conditional("no", "a") + "\r\nb", context) == "b");
+        REQUIRE(resolve(comparison("yes", "\"true\"", "a") + "\r\nb", context) == "ab");
+        REQUIRE(resolve(comparison("no", "\"true\"", "a") + "\r\nb", context) == "b");
     }
 
     SECTION("only one newline is trimmed")
     {
-        REQUIRE(resolve(conditional("yes", "a") + "\n\nb", context) == "a\nb");
+        REQUIRE(resolve(comparison("yes", "\"true\"", "a") + "\n\nb", context) == "a\nb");
     }
 
     SECTION("closing tag at end of content")
     {
-        REQUIRE(resolve(conditional("yes", "a") + "\n", context) == "a");
-        REQUIRE(resolve(conditional("yes", "a") + "\r\n", context) == "a");
+        REQUIRE(resolve(comparison("yes", "\"true\"", "a") + "\n", context) == "a");
+        REQUIRE(resolve(comparison("yes", "\"true\"", "a") + "\r\n", context) == "a");
     }
 }
 
 TEST_CASE("standalone conditional tags produce one line per true condition", "[resolution]")
 {
     Context context;
-    context.set_condition("HAS_STRING_FIELD", true);
-    context.set_condition("HAS_VEC2_FIELD", false);
-    context.set_condition("HAS_BLOB_FIELD", true);
+    context.set("HAS_STRING_FIELD", "true");
+    context.set("HAS_BLOB_FIELD", "true");
 
     SECTION("unix line endings")
     {
         const std::string content =
-            "[[==HAS_STRING_FIELD|\n"
+            "[[=HAS_STRING_FIELD == \"true\"|\n"
             "#include <string>\n"
-            "==]]\n"
-            "[[==HAS_VEC2_FIELD|\n"
+            "=]]\n"
+            "[[=HAS_VEC2_FIELD == \"true\"|\n"
             "#include <glm/ext/vector_float2.hpp>\n"
-            "==]]\n"
-            "[[==HAS_BLOB_FIELD|\n"
+            "=]]\n"
+            "[[=HAS_BLOB_FIELD == \"true\"|\n"
             "#include <vector>\n"
             "#include <cstddef>\n"
-            "==]]\n";
+            "=]]\n";
         REQUIRE(resolve(content, context) ==
             "#include <string>\n#include <vector>\n#include <cstddef>\n");
     }
@@ -350,16 +347,16 @@ TEST_CASE("standalone conditional tags produce one line per true condition", "[r
     SECTION("windows line endings")
     {
         const std::string content =
-            "[[==HAS_STRING_FIELD|\r\n"
+            "[[=HAS_STRING_FIELD == \"true\"|\r\n"
             "#include <string>\r\n"
-            "==]]\r\n"
-            "[[==HAS_VEC2_FIELD|\r\n"
+            "=]]\r\n"
+            "[[=HAS_VEC2_FIELD == \"true\"|\r\n"
             "#include <glm/ext/vector_float2.hpp>\r\n"
-            "==]]\r\n"
-            "[[==HAS_BLOB_FIELD|\r\n"
+            "=]]\r\n"
+            "[[=HAS_BLOB_FIELD == \"true\"|\r\n"
             "#include <vector>\r\n"
             "#include <cstddef>\r\n"
-            "==]]\r\n";
+            "=]]\r\n";
         REQUIRE(resolve(content, context) ==
             "#include <string>\r\n#include <vector>\r\n#include <cstddef>\r\n");
     }

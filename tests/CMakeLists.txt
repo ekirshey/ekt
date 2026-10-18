@@ -2,6 +2,7 @@ find_package(Catch2 3 REQUIRED)
 
 set(EKT_TEST_SOURCE
     test_context.cpp
+    test_evaluator.cpp
     test_lua_interface.cpp
     test_template_resolution.cpp
     test_utils.cpp

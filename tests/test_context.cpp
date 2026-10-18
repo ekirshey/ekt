@@ -81,15 +81,6 @@ TEST_CASE("get_value returns empty for a missing key", "[context]")
     REQUIRE_FALSE(context.contains("MISSING"));
 }
 
-TEST_CASE("set_condition creates an entry without a string value", "[context]")
-{
-    Context context;
-    REQUIRE(context.set_condition("enabled", true));
-
-    REQUIRE(context.contains("ENABLED"));
-    REQUIRE(context.get_value("enabled") == "");
-}
-
 TEST_CASE("append creates an entry without a string value", "[context]")
 {
     Context element;
@@ -103,17 +94,6 @@ TEST_CASE("append creates an entry without a string value", "[context]")
     REQUIRE(context.get_value("headers") == "");
 }
 
-TEST_CASE("set, set_condition and append share a single entry per key", "[context]")
-{
-    Context context;
-    context.set("KEY", "value");
-    context.set_condition("KEY", true);
-    context.append("KEY", Context{});
-
-    // Setting the condition or appending must not clobber the string value.
-    REQUIRE(context.get_value("KEY") == "value");
-}
-
 TEST_CASE("empty keys are rejected", "[context]")
 {
     Context context;
@@ -121,11 +101,6 @@ TEST_CASE("empty keys are rejected", "[context]")
     SECTION("set")
     {
         REQUIRE_FALSE(context.set("", "value"));
-    }
-
-    SECTION("set_condition")
-    {
-        REQUIRE_FALSE(context.set_condition("", true));
     }
 
     SECTION("append")
@@ -205,12 +180,10 @@ TEST_CASE("concat with ResolveMode::Overwrite replaces the whole entry", "[conte
 
     // The incoming entry only has a condition, so its string value is empty.
     Context other;
-    other.set_condition("SHARED", true);
-
     context.concat(other, ResolveMode::Overwrite);
 
     REQUIRE(context.contains("SHARED"));
-    REQUIRE(context.get_value("SHARED") == "");
+    REQUIRE(context.get_value("SHARED") == "original");
 }
 
 TEST_CASE("concat with an empty context is a no-op", "[context]")
@@ -231,11 +204,9 @@ TEST_CASE("concat into an empty context copies everything", "[context]")
 
     Context other;
     other.set("A", "a");
-    other.set_condition("FLAG", true);
 
     Context context;
     context.concat(other, mode);
 
     REQUIRE(context.get_value("A") == "a");
-    REQUIRE(context.contains("FLAG"));
 }

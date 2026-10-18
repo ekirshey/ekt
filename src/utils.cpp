@@ -14,6 +14,19 @@ std::string utils::to_upper(const std::string& in)
     return upper;
 }
 
+std::string_view utils::trim(std::string_view in)
+{
+    constexpr std::string_view whitespace = " \t\n\r\f\v";
+
+    const auto first = in.find_first_not_of(whitespace);
+    if (first == std::string_view::npos)
+    {
+        return {};
+    }
+    const auto last = in.find_last_not_of(whitespace);
+    return in.substr(first, last - first + 1);
+}
+
 std::optional<std::size_t> utils::find_template_end(std::string_view str, std::size_t offset, const std::string& template_start, const std::string& template_end)
 {
     int open_count = 0;
