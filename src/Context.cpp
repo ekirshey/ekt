@@ -83,6 +83,14 @@ std::span<const Context> Context::get_array(const std::string& key) const
 
 bool Context::is_valid_key(const std::string& key)
 {
+    if (key.contains('(') ||
+        key.contains(')') ||
+        key.contains('=') ||
+        key.contains('!'))
+    {
+        return false;
+    }
+
     if (key.empty())
     {
         return false;

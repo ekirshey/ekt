@@ -6,4 +6,5 @@
 namespace ekt
 {
 bool evaluate_condition(const Scope& scope, const std::string& predicate);
+bool is_function(const std::string& predicate);
 }

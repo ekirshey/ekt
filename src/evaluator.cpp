@@ -1,10 +1,12 @@
 #include "evaluator.h"
+#include <functional>
 #include <list>
 #include <string>
 #include <string_view>
 #include "utils.h"
 
 #include <iostream>
+#include <unordered_map>
 
 namespace ekt
 {
@@ -34,6 +36,37 @@ namespace {
         bool evaluated_value = false;
     };
 
+    struct Op
+    {
+        OpType type = OpType::None;
+        size_t length = 0;
+    };
+
+    std::unordered_map<std::string, Op> ops = {
+      {"==", {.type = OpType::Equal, .length = 2}},
+      {"!=", {.type = OpType::NotEqual, .length = 2}},
+      {"||", {.type = OpType::Or, .length = 2}},
+      {"&&", {.type = OpType::And, .length = 2}},
+    };
+
+    Node create_arg(std::string_view pred_view, size_t start, size_t pos, const Scope& scope)
+    {
+        std::string value;
+        auto var = utils::trim(pred_view.substr(start, pos - start));
+        if(var.front() == '"' && var.back() == '"')
+        {
+            value = value = var.substr(1, var.size() - 2);
+        }
+        else {
+            // EKTODO string_view versions here?
+            value = scope.get_value(std::string(var));
+        }
+        return Node{
+            .type = Type::Arg,
+            .value = value
+        };
+    }
+
     void parse_predicate(const Scope& scope, const std::string_view& pred_view, std::list<Node>& nodes)
     {
         if(pred_view.empty())
@@ -45,55 +78,22 @@ namespace {
         size_t current_var_start = 0;
         while(pos < pred_view.size())
         {
-            OpType type = OpType::None;
-            const auto op_str = pred_view.substr(pos, 2);
-            int arg_size = 0;
-            if (op_str == "==")
-            {
-                type = OpType::Equal;
-                arg_size = 2;
-            }
-            else if (op_str == "!=")
-            {
-                type = OpType::NotEqual;
-                arg_size = 2;
-            }
-            else if (op_str == "||")
-            {
-                type = OpType::Or;
-                arg_size = 2;
-            }
-            else if (op_str == "&&")
-            {
-                type = OpType::And;
-                arg_size = 2;
-            }
+            const auto op_str = std::string(pred_view.substr(pos, 2));
+            auto op_result = ops.find(op_str);
 
-            if (type != OpType::None)
+            if (op_result != ops.end())
             {
+                auto& op = op_result->second;
                 if (pos - current_var_start > 0)
                 {
-                    std::string value;
-                    auto var = utils::trim(pred_view.substr(current_var_start, pos - current_var_start));
-                    if(var.front() == '"' && var.back() == '"')
-                    {
-                        value = value = var.substr(1, var.size() - 2);
-                    }
-                    else {
-                        // EKTODO string_view versions here?
-                        value = scope.get_value(std::string(var));
-                    }
-                    nodes.push_back(Node{
-                        .type = Type::Arg,
-                        .value = value
-                    });
+                    nodes.push_back(create_arg(pred_view, current_var_start, pos, scope));
                 }
 
                 nodes.push_back(Node{
                     .type = Type::Op,
-                    .op_type = type
+                    .op_type = op.type
                 });
-                pos += arg_size;
+                pos += op.length;
                 current_var_start = pos;
             }
             else {
@@ -105,20 +105,50 @@ namespace {
         {
             return;
         }
-        std::string value;
-        auto var = utils::trim(pred_view.substr(current_var_start, pos - current_var_start));
-        if(var.front() == '"' && var.back() == '"')
-        {
-            value = var.substr(1, var.size() - 2);
+        nodes.push_back(create_arg(pred_view, current_var_start, pos, scope));
+    }
+
+    bool can_perform_op(std::list<Node>::iterator& current, std::list<Node>::iterator& left, std::list<Node>::iterator& right, OpType type)
+    {
+        switch (type) {
+            case OpType::None:
+                return true;
+            case OpType::Equal:
+            case OpType::NotEqual:
+                return (left->type == Type::Arg && right->type == Type::Arg);
+            case OpType::Or:
+            case OpType::And:
+                return (left->type == Type::Evaluated && right->type == Type::Evaluated);
         }
-        else {
-            // EKTODO string_view versions here?
-            value = scope.get_value(std::string(var));
+
+        return true;
+    }
+
+    void perform_op(std::list<Node>& nodes, std::list<Node>::iterator& current, std::list<Node>::iterator& left, std::list<Node>::iterator& right, OpType type)
+    {
+        bool eval = false;
+        switch (type) {
+            case OpType::None:
+                return;
+            case OpType::Equal:
+                eval = left->value == right->value;
+                break;
+            case OpType::NotEqual:
+                eval = left->value != right->value;
+                break;
+            case OpType::Or:
+                eval = left->evaluated_value || right->evaluated_value;
+                break;
+            case OpType::And:
+                eval = left->evaluated_value && right->evaluated_value;
+                break;
         }
-        nodes.push_back(Node{
-            .type = Type::Arg,
-            .value = value
-        });
+
+        left->type = Type::Evaluated;
+        left->evaluated_value = eval;
+        nodes.erase(current);
+        nodes.erase(right);
+        current = std::next(left);
     }
 }
 
@@ -145,44 +175,9 @@ bool evaluate_condition(const Scope& scope, const std::string& predicate)
 
             auto left = std::prev(current);
             auto right = std::next(current);
-            switch (current->op_type) {
-                case OpType::None:
-                    continue;
-                case OpType::Equal:
-                case OpType::NotEqual:
-                {
-                    if(left->type != Type::Arg || right->type != Type::Arg)
-                    {
-                        // EKTODO error
-                        return false;
-                    }
-
-                    bool eval = current->op_type == OpType::Equal ? left->value == right->value : left->value != right->value;
-                    left->type = Type::Evaluated;
-                    left->evaluated_value = eval;
-                    nodes.erase(current);
-                    nodes.erase(right);
-                    current = std::next(left);
-                    break;
-                }
-                case OpType::Or:
-                case OpType::And:
-                {
-                    auto left = std::prev(current);
-                    auto right = std::next(current);
-                    if (right->type != Type::Evaluated)
-                    {
-                        break;
-                    }
-                    bool eval = current->op_type == OpType::Or ? left->evaluated_value || right->evaluated_value :
-                        left->evaluated_value && right->evaluated_value;
-                    left->type = Type::Evaluated;
-                    left->evaluated_value = eval;
-                    nodes.erase(current);
-                    nodes.erase(right);
-                    current = std::next(left);
-                    break;
-                }
+            if(can_perform_op(current, left, right, current->op_type))
+            {
+                perform_op(nodes, current, left, right, current->op_type);
             }
         }
 
@@ -199,6 +194,11 @@ bool evaluate_condition(const Scope& scope, const std::string& predicate)
         }
     }
 
+    return false;
+}
+
+bool is_function(const std::string& predicate)
+{
     return false;
 }
 
