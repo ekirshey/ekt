@@ -167,7 +167,6 @@ TEST_CASE("malformed predicates evaluate to false", "[evaluator]")
         REQUIRE_FALSE(evaluate("|| A == \"true\""));
     }
 
-
     SECTION("logical operator with a missing comparison")
     {
         REQUIRE_FALSE(evaluate("A == \"true\" &&"));
@@ -177,5 +176,15 @@ TEST_CASE("malformed predicates evaluate to false", "[evaluator]")
     SECTION("logical operator between bare values")
     {
         REQUIRE_FALSE(evaluate("A && C"));
+    }
+
+    SECTION("only a single logical operator")
+    {
+        REQUIRE_FALSE(evaluate("&&"));
+    }
+
+    SECTION("multiplelogical operators")
+    {
+        REQUIRE_FALSE(evaluate("|| && ||"));
     }
 }

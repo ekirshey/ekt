@@ -13,10 +13,18 @@ namespace ekt
 namespace {
     enum class Type
     {
+        None,
         Arg,
         Op,
         Literal,
         Evaluated
+    };
+
+    enum class NewType
+    {
+        Bool,
+        Literal,
+        Op
     };
 
     enum class OpType
@@ -49,10 +57,15 @@ namespace {
       {"&&", {.type = OpType::And, .length = 2}},
     };
 
-    Node create_arg(std::string_view pred_view, size_t start, size_t pos, const Scope& scope)
+    std::optional<Node> create_arg(std::string_view pred_view, size_t start, size_t pos, const Scope& scope)
     {
         std::string value;
         auto var = utils::trim(pred_view.substr(start, pos - start));
+        if(var.empty())
+        {
+            return std::nullopt;
+        }
+
         if(var.front() == '"' && var.back() == '"')
         {
             value = value = var.substr(1, var.size() - 2);
@@ -61,6 +74,7 @@ namespace {
             // EKTODO string_view versions here?
             value = scope.get_value(std::string(var));
         }
+
         return Node{
             .type = Type::Arg,
             .value = value
@@ -86,7 +100,11 @@ namespace {
                 auto& op = op_result->second;
                 if (pos - current_var_start > 0)
                 {
-                    nodes.push_back(create_arg(pred_view, current_var_start, pos, scope));
+                    auto node = create_arg(pred_view, current_var_start, pos, scope);
+                    if(node != std::nullopt)
+                    {
+                        nodes.push_back(*node);
+                    }
                 }
 
                 nodes.push_back(Node{
@@ -105,7 +123,11 @@ namespace {
         {
             return;
         }
-        nodes.push_back(create_arg(pred_view, current_var_start, pos, scope));
+        auto node = create_arg(pred_view, current_var_start, pos, scope);
+        if(node != std::nullopt)
+        {
+            nodes.push_back(*node);
+        }
     }
 
     bool can_perform_op(std::list<Node>::iterator& current, std::list<Node>::iterator& left, std::list<Node>::iterator& right, OpType type)
@@ -152,6 +174,17 @@ namespace {
     }
 }
 
+
+/*
+Proper way is a tree
+
+bool,string_literal
+
+                
+
+
+*/
+
 bool evaluate_condition(const Scope& scope, const std::string& predicate)
 {
     std::list<Node> nodes;
@@ -165,7 +198,8 @@ bool evaluate_condition(const Scope& scope, const std::string& predicate)
         {
             return current->evaluated_value;
         }
-        if(current->type == Type::Op)
+
+        if(current != nodes.end() && current->type == Type::Op)
         {
             if (current == nodes.begin() || current == nodes.end() || std::next(current) == nodes.end())
             {
@@ -181,16 +215,19 @@ bool evaluate_condition(const Scope& scope, const std::string& predicate)
             }
         }
 
-        current++;
         if (current == nodes.end())
         {
-            // Nothing was removed, infinite loop
+            // Nothing was removed and it's an infinite loop
             if (size == nodes.size())
             {
                 return false;
             }
             size = nodes.size();
             current = nodes.begin();
+        }
+        else
+        {
+            current++;
         }
     }
 
