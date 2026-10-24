@@ -16,7 +16,8 @@ namespace ekt
     enum class FuncReturnType
     {
         Bool,
-        Number
+        Number,
+        Literal
     };
 
     struct FuncArg

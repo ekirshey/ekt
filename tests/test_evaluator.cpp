@@ -28,10 +28,19 @@ namespace
 
         Context item;
         item.set("VALUE", "1");
+
+        Context item2;
+        item2.set("VALUE", "2");
+
+        Context item3;
+        item3.set("VALUE", "3");
+
+        Context item4;
+        item4.set("VALUE", "4");
         context.append("ITEMS", item);
-        context.append("ITEMS", item);
-        context.append("ITEMS", item);
-        context.append("ITEMS", item);
+        context.append("ITEMS", item2);
+        context.append("ITEMS", item3);
+        context.append("ITEMS", item4);
         return context;
     }
 
@@ -70,7 +79,7 @@ TEST_CASE("index returns current loop index", "[evaluator]")
     REQUIRE_FALSE(evaluate_condition(scope, "INDEX(ITEMS) == A"));
 }
 
-TEST_CASE("not", "[evaluator]")
+TEST_CASE("not operation tests", "[evaluator]")
 {
     REQUIRE_FALSE(evaluate("is_array_empty(ITEMS)"));
     REQUIRE(evaluate("!is_array_empty(ITEMS)"));
@@ -93,6 +102,12 @@ TEST_CASE("number comparisons", "[evaluator]")
     REQUIRE(evaluate("BIG_NUM >= 100"));
 }
 
+TEST_CASE("if_any evaluates to false if no array values equal input", "[evaluator]")
+{
+    REQUIRE(evaluate("if_any(ITEMS.VALUE, 1)"));
+    REQUIRE_FALSE(evaluate("if_any(ITEMS.VALUE, 100)"));
+
+}
 TEST_CASE("is_array_empty evaluates to false if array is not empty", "[evaluator]")
 {
     REQUIRE_FALSE(evaluate("is_array_empty(ITEMS)"));

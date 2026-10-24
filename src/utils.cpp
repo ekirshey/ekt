@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <unordered_map>
 #include <charconv>
+#include <ranges>
 
 namespace ekt
 {
@@ -12,6 +13,13 @@ std::string utils::to_upper(const std::string& in)
 {
     std::string upper = in;
     std::transform(upper.begin(), upper.end(), upper.begin(), ::toupper);
+    return upper;
+}
+
+std::string utils::to_lower(const std::string& in)
+{
+    std::string upper = in;
+    std::transform(upper.begin(), upper.end(), upper.begin(), ::tolower);
     return upper;
 }
 
@@ -76,6 +84,45 @@ std::optional<int> utils::to_int(std::string_view sv)
         return std::nullopt; // not a number, out of range, or trailing characters
     }
     return value;
+}
+
+std::optional<std::string> utils::get_parent_key(const std::string& key)
+{
+    if(!key.contains(ownership_delimiter))
+    {
+        return std::nullopt;
+    }
+
+    auto split = std::views::split(key, std::string_view(ownership_delimiter))
+            | std::ranges::to<std::vector<std::string>>();
+
+    if (split.size() != 2)
+    {
+        return std::nullopt;
+    }
+
+    return utils::to_upper(split[0]);
+}
+
+bool utils::split_key(const std::string& key, std::string& parent, std::string& field)
+{
+    if(!key.contains(ownership_delimiter))
+    {
+        return false;
+    }
+
+    auto split = std::views::split(key, std::string_view(ownership_delimiter))
+            | std::ranges::to<std::vector<std::string>>();
+
+    if (split.size() != 2)
+    {
+        return false;
+    }
+
+    parent = utils::to_upper(split[0]);
+    field = utils::to_upper(split[1]);
+
+    return true;
 }
 
 }

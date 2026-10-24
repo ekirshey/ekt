@@ -25,8 +25,6 @@ public:
     int get_num_child_contexts(const std::string& parent_name) const;
 
 private:
-    std::optional<std::string> get_parent_key(const std::string& key) const;
-
     const Context* m_root_context;
     std::unordered_map<std::string, std::vector<const Context*>> m_child_contexts;
 };

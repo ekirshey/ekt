@@ -24,55 +24,92 @@ namespace ekt
         }
 
         // Function definitions
-        FuncReturnVal is_set(const std::vector<FuncArg>& args, const Scope& scope)
+        bool is_set(const std::vector<FuncArg>& args, const Scope& scope)
         {
             if (args.size() != 1 || args[0].type != FuncArgType::Literal)
             {
-                return ret_val(false);
+                return false;
             }
 
-            return ret_val(!scope.get_value(args[0].literal_value).empty());
+            return !scope.get_value(args[0].literal_value).empty();
         }
 
-        FuncReturnVal is_arr_empty(const std::vector<FuncArg>& args, const Scope& scope)
+        bool is_arr_empty(const std::vector<FuncArg>& args, const Scope& scope)
         {
             if (args.size() != 1 || args[0].type != FuncArgType::Literal)
             {
-                return ret_val(false);
+                return false;
             }
 
-            return ret_val(scope.get_array(args[0].literal_value).empty());
+            return scope.get_array(args[0].literal_value).empty();
         }
 
-        FuncReturnVal get_index(const std::vector<FuncArg>& args, const Scope& scope)
+        int get_index(const std::vector<FuncArg>& args, const Scope& scope)
         {
             if (args.size() != 1 || args[0].type != FuncArgType::Literal)
             {
-                return ret_val(false);
+                return -1;
             }
 
-            return ret_val(scope.get_num_child_contexts(args[0].literal_value) - 1);
+            return scope.get_num_child_contexts(args[0].literal_value) - 1;
+        }
+
+        bool if_any(const std::vector<FuncArg>& args, const Scope& scope)
+        {
+            if (args.size() != 2 || args[0].type != FuncArgType::Literal)
+            {
+                return false;
+            }
+
+            std::string parent, field;
+            auto result = utils::split_key(args[0].literal_value, parent, field);
+            if (!result)
+            {
+                return false;
+            }
+
+            auto array = scope.get_array(parent);
+            if (array.empty())
+            {
+                return false;
+            }
+
+            for(auto& a : array)
+            {
+                if (a.get_value(field) == args[1].literal_value)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         const FunctionDefinition is_set_def = {
             .arg_types = {FuncArgType::Literal},
-            .impl = &is_set
+            .impl = [](const std::vector<FuncArg>& args, const Scope& scope) {return ret_val(is_set(args, scope));}
         };
 
         const FunctionDefinition is_arr_empty_def = {
             .arg_types = {FuncArgType::Literal},
-            .impl = &is_arr_empty
+            .impl = [](const std::vector<FuncArg>& args, const Scope& scope) {return ret_val(is_arr_empty(args, scope));}
         };
 
         const FunctionDefinition get_index_def = {
             .arg_types = {FuncArgType::Literal},
-            .impl = &get_index
+            .impl = [](const std::vector<FuncArg>& args, const Scope& scope) {return ret_val(get_index(args, scope));}
+        };
+
+        const FunctionDefinition if_any_def = {
+            .arg_types = {FuncArgType::Literal, FuncArgType::Literal},
+            .impl = [](const std::vector<FuncArg>& args, const Scope& scope) {return ret_val(if_any(args, scope));}
         };
 
         std::unordered_map<std::string, FunctionDefinition> functions = {
             {"IS_SET", is_set_def},
             {"IS_ARRAY_EMPTY", is_arr_empty_def},
-            {"INDEX", get_index_def}
+            {"INDEX", get_index_def},
+            {"IF_ANY", if_any_def},
         };
     }
 
