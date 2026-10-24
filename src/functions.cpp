@@ -31,7 +31,7 @@ namespace ekt
                 return ret_val(false);
             }
 
-            return ret_val(!scope.get_value(args[0].string_value).empty());
+            return ret_val(!scope.get_value(args[0].literal_value).empty());
         }
 
         FuncReturnVal is_arr_empty(const std::vector<FuncArg>& args, const Scope& scope)
@@ -41,7 +41,7 @@ namespace ekt
                 return ret_val(false);
             }
 
-            return ret_val(scope.get_array(args[0].string_value).empty());
+            return ret_val(scope.get_array(args[0].literal_value).empty());
         }
 
         FuncReturnVal get_index(const std::vector<FuncArg>& args, const Scope& scope)
@@ -51,7 +51,7 @@ namespace ekt
                 return ret_val(false);
             }
 
-            return ret_val(-1);
+            return ret_val(scope.get_num_child_contexts(args[0].literal_value) - 1);
         }
 
         const FunctionDefinition is_set_def = {
@@ -64,10 +64,15 @@ namespace ekt
             .impl = &is_arr_empty
         };
 
+        const FunctionDefinition get_index_def = {
+            .arg_types = {FuncArgType::Literal},
+            .impl = &get_index
+        };
+
         std::unordered_map<std::string, FunctionDefinition> functions = {
             {"IS_SET", is_set_def},
             {"IS_ARRAY_EMPTY", is_arr_empty_def},
-            {"INDEX", get_index}
+            {"INDEX", get_index_def}
         };
     }
 
@@ -130,7 +135,7 @@ namespace ekt
                     {
                         new_func.args.push_back(FuncArg{
                             .type = a,
-                            .string_value = std::string(trimmed)
+                            .literal_value = std::string(trimmed)
                         });
                         break;
                     }

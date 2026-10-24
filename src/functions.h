@@ -22,7 +22,7 @@ namespace ekt
     struct FuncArg
     {
         FuncArgType type;
-        std::string string_value;
+        std::string literal_value;
         int number_value;
     };
 

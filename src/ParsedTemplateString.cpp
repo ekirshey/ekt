@@ -277,8 +277,8 @@ std::string ParsedTemplateString::resolve_loop(Scope& scope, const TemplateVaria
     {
         scope.add_child_context(var.predicate, &a);
         result += var.child->resolve_impl(scope);
-        scope.remove_child_context(var.predicate);
     }
+    scope.clear_child_contexts(var.predicate);
     return result;
 }
 

@@ -30,6 +30,8 @@ namespace
         item.set("VALUE", "1");
         context.append("ITEMS", item);
         context.append("ITEMS", item);
+        context.append("ITEMS", item);
+        context.append("ITEMS", item);
         return context;
     }
 
@@ -40,6 +42,32 @@ namespace
         scope.set_root_context(&context);
         return evaluate_condition(scope, predicate);
     }
+}
+
+TEST_CASE("index returns current loop index", "[evaluator]")
+{
+    const Context context = make_context();
+    Scope scope;
+    scope.set_root_context(&context);
+
+    auto arr = scope.get_array("ITEMS");
+
+    REQUIRE(evaluate_condition(scope, "INDEX(ITEMS) == -1"));
+
+    scope.add_child_context("ITEMS", &arr[0]);
+    REQUIRE(evaluate_condition(scope, "INDEX(ITEMS) == 0"));
+    REQUIRE(evaluate_condition(scope, "INDEX(ITEMS) >= 0"));
+    REQUIRE_FALSE(evaluate_condition(scope, "INDEX(ITEMS) == 1"));
+
+    scope.add_child_context("ITEMS", &arr[1]);
+    REQUIRE(evaluate_condition(scope, "INDEX(ITEMS) == 1"));
+    REQUIRE(evaluate_condition(scope, "INDEX(ITEMS) > 0"));
+    REQUIRE(evaluate_condition(scope, "INDEX(ITEMS) < 2"));
+    REQUIRE(evaluate_condition(scope, "INDEX(ITEMS) <= 1"));
+    REQUIRE(evaluate_condition(scope, "INDEX(ITEMS) == NUM"));
+    REQUIRE(evaluate_condition(scope, "INDEX(ITEMS) == \"1\""));
+
+    REQUIRE_FALSE(evaluate_condition(scope, "INDEX(ITEMS) == A"));
 }
 
 TEST_CASE("number comparisons", "[evaluator]")
