@@ -29,6 +29,7 @@ namespace ekt
         GreaterThanOrEqual,
         LessThan,
         LessThanOrEqual,
+        Not,
         OpenParen,
         CloseParen
     };
@@ -59,6 +60,7 @@ namespace ekt
         bool operator>=(const EvalNode& rhs) const;
         bool operator||(const EvalNode& rhs) const;
         bool operator&&(const EvalNode& rhs) const;
+        bool operator!() const;
 
         Type type = Type::None;
         Op op{};

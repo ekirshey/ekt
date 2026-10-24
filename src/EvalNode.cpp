@@ -172,4 +172,14 @@ namespace ekt
 
         return bool_value && rhs.bool_value;
     }
+
+    bool EvalNode::operator!() const
+    {
+        if(!is_type(type, Type::Bool))
+        {
+            return false;
+        }
+
+        return !bool_value;
+    }
 }

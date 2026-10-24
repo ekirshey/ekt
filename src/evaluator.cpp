@@ -31,7 +31,9 @@ namespace {
 
       // Logical Ops
       {"||", {.type = OpType::Or, .length = 2, .precedence = 2, .num_args = 2, .required_types = static_cast<int>(Type::Bool)}},
-      {"&&", {.type = OpType::And, .length = 2, .precedence = 2, .num_args = 2, .required_types = static_cast<int>(Type::Bool)}}
+      {"&&", {.type = OpType::And, .length = 2, .precedence = 2, .num_args = 2, .required_types = static_cast<int>(Type::Bool)}},
+
+      {"!", {.type = OpType::Not, .length = 1, .precedence = 4, .num_args = 1, .required_types = static_cast<int>(Type::Bool)}}
     };
 
     std::optional<EvalNode> create_token(std::string_view pred_view, size_t start, size_t pos, const Scope& scope)
@@ -132,7 +134,7 @@ namespace {
 
         EvalNode root = tokens[0];
         EvalNode* current = &root;
-        for(int i = 0; i < tokens.size(); i++)
+        for(int i = 1; i < tokens.size(); i++)
         {
             auto token = tokens[i];
 
@@ -244,6 +246,11 @@ namespace {
             case OpType::LessThanOrEqual:
             {
                 eval = node.children[0] <= node.children[1];
+                break;
+            }
+            case OpType::Not:
+            {
+                eval = !node.children[0];
                 break;
             }
         }

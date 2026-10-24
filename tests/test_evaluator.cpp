@@ -70,6 +70,17 @@ TEST_CASE("index returns current loop index", "[evaluator]")
     REQUIRE_FALSE(evaluate_condition(scope, "INDEX(ITEMS) == A"));
 }
 
+TEST_CASE("not", "[evaluator]")
+{
+    REQUIRE_FALSE(evaluate("is_array_empty(ITEMS)"));
+    REQUIRE(evaluate("!is_array_empty(ITEMS)"));
+    REQUIRE(evaluate("is_array_empty(ITEMS) || !is_array_empty(ITEMS)"));
+    REQUIRE(evaluate("!is_array_empty(ITEMS) || is_array_empty(ITEMS)"));
+    REQUIRE_FALSE(evaluate("!is_array_empty(ITEMS) && is_array_empty(ITEMS)"));
+    REQUIRE(evaluate("!is_array_empty(ITEMS) && A == \"true\""));
+    REQUIRE(evaluate("!is_array_empty(ITEMS) && !is_array_empty(ITEMS)"));
+}
+
 TEST_CASE("number comparisons", "[evaluator]")
 {
     REQUIRE(evaluate("NUM == 1"));
