@@ -55,7 +55,15 @@ bool Context::append(const std::string& key, const Context& value)
         return false;
     }
 
-    m_data[upper_key].array.emplace_back(value);
+    // Append parent name to all keys
+    Context new_context;
+    for(auto& [k, v] : value.m_data)
+    {
+        auto new_key = upper_key + ownership_delimiter + k;
+        new_context.m_data[new_key] = v;
+    }
+
+    m_data[upper_key].array.emplace_back(new_context);
 
     return true;
 }

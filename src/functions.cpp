@@ -62,12 +62,13 @@ namespace ekt
                 return false;
             }
 
-            std::string parent, field;
-            auto result = utils::split_key(args[0].literal_value, parent, field);
+            auto result = utils::get_parent_key(args[0].literal_value);
             if (!result)
             {
                 return false;
             }
+            
+            auto parent = *result;
 
             auto array = scope.get_array(parent);
             if (array.empty())
@@ -98,7 +99,7 @@ namespace ekt
 
             for(auto& a : array)
             {
-                if (a.get_value(field) == val)
+                if (a.get_value(args[0].literal_value) == val)
                 {
                     return true;
                 }
