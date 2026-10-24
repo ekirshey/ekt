@@ -51,29 +51,7 @@ namespace {
             return EvalNode(func->evaluate(scope));
         }
 
-        auto num = utils::to_int(var);
-        if (num)
-        {
-            return EvalNode(num.value());
-        }
-
-        if(var.front() == '"' && var.back() == '"')
-        {
-            value = value = var.substr(1, var.size() - 2);
-        }
-        else {
-            // EKTODO string_view versions here?
-            value = scope.get_value(std::string(var));
-        }
-
-        // Convert string values to numbers if appropriate
-        num = utils::to_int(value);
-        if (num)
-        {
-            return EvalNode(num.value());
-        }
-
-        return EvalNode(value);
+        return literal_to_node(scope, var);
     }
 
     void tokenize(const std::string_view& pred_view, const Scope& scope, std::vector<EvalNode>& tokens)
@@ -280,6 +258,38 @@ bool evaluate_condition(const Scope& scope, const std::string& predicate)
     }
 
     return tree.bool_value;
+}
+
+std::optional<EvalNode> literal_to_node(const Scope& scope, std::string_view str)
+{
+    if(str.empty())
+    {
+        return std::nullopt;
+    }
+
+    std::string value;
+    auto num = utils::to_int(str);
+    if (num)
+    {
+        return EvalNode(num.value());
+    }
+
+    if(str.front() == '"' && str.back() == '"')
+    {
+        value = value = str.substr(1, str.size() - 2);
+    }
+    else {
+        // EKTODO string_view versions here?
+        value = scope.get_value(std::string(str));
+    }
+
+    num = utils::to_int(value);
+    if (num)
+    {
+        return EvalNode(num.value());
+    }
+
+    return EvalNode(value);
 }
 
 }

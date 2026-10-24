@@ -3,6 +3,7 @@
 #include <ranges>
 
 #include "utils.h"
+#include <evaluator.h>
 
 namespace ekt
 {
@@ -74,9 +75,30 @@ namespace ekt
                 return false;
             }
 
+            auto node = literal_to_node(scope, args[1].literal_value);
+            if(node == std::nullopt)
+            {
+                return false;
+            }
+
+            if (!is_primitive(node->type))
+            {
+                return false;
+            }
+
+            std::string val;
+            if(node->type == Type::Number)
+            {
+                val = std::to_string(node->number_value);
+            }
+            else
+            {
+                val = node->literal_value;
+            }
+
             for(auto& a : array)
             {
-                if (a.get_value(field) == args[1].literal_value)
+                if (a.get_value(field) == val)
                 {
                     return true;
                 }

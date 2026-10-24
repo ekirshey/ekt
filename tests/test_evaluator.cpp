@@ -37,10 +37,19 @@ namespace
 
         Context item4;
         item4.set("VALUE", "4");
+
+        Context item5;
+        item5.set("VALUE", "String");
+
+        Context item6;
+        item6.set("VALUE", "true");
+
         context.append("ITEMS", item);
         context.append("ITEMS", item2);
         context.append("ITEMS", item3);
         context.append("ITEMS", item4);
+        context.append("ITEMS", item5);
+        context.append("ITEMS", item6);
         return context;
     }
 
@@ -106,8 +115,12 @@ TEST_CASE("if_any evaluates to false if no array values equal input", "[evaluato
 {
     REQUIRE(evaluate("if_any(ITEMS.VALUE, 1)"));
     REQUIRE_FALSE(evaluate("if_any(ITEMS.VALUE, 100)"));
-
+    REQUIRE(evaluate("if_any(ITEMS.VALUE, \"String\")"));
+    REQUIRE(evaluate("if_any(ITEMS.VALUE, A)"));
+    REQUIRE(evaluate("if_any(ITEMS.VALUE, NUM)"));
+    REQUIRE_FALSE(evaluate("if_any(ITEMS.VALUE, B)"));
 }
+
 TEST_CASE("is_array_empty evaluates to false if array is not empty", "[evaluator]")
 {
     REQUIRE_FALSE(evaluate("is_array_empty(ITEMS)"));
