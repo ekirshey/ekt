@@ -394,3 +394,68 @@ TEST_CASE("standalone loop tags produce one line per element", "[resolution]")
         REQUIRE(resolve(content, context) == "before\r\n0\r\n1\r\n2\r\nafter");
     }
 }
+
+TEST_CASE("functions resolve inside key templates", "[resolution]")
+{
+    auto context = make_context({{"name", "Erik Kirshey"}, {"count", "42"}, {"last", "kirshey"}, {"kirshey", "Erik"}});
+
+    SECTION("a function with a variable argument")
+    {
+        REQUIRE(resolve(key("to_lower(name)"), context) == "erik kirshey");
+    }
+
+    SECTION("a function with a quoted literal argument")
+    {
+        REQUIRE(resolve(key("to_lower(\"Hello\")"), context) == "hello");
+    }
+
+    SECTION("function names are case insensitive")
+    {
+        REQUIRE(resolve(key("TO_LOWER(name)"), context) == "erik kirshey");
+        REQUIRE(resolve(key("To_Lower(name)"), context) == "erik kirshey");
+    }
+
+    SECTION("a function result is substituted alongside surrounding text")
+    {
+        REQUIRE(resolve(std::format("hi {}!", key("to_lower(name)")), context) == "hi erik kirshey!");
+    }
+
+    SECTION("a number argument is passed through unchanged")
+    {
+        REQUIRE(resolve(key("to_lower(count)"), context) == "42");
+    }
+
+    SECTION("a function result can be used as a recursive key")
+    {
+        REQUIRE(resolve(key(key("to_lower(last)")), context) == "Erik");
+    }
+
+    SECTION("bool results resolve to 1 or 0")
+    {
+        REQUIRE(resolve(key("is_set(name)"), context) == "true");
+        REQUIRE(resolve(key("is_set(missing)"), context) == "false");
+    }
+
+    SECTION("an unknown function resolves to nothing")
+    {
+        REQUIRE(resolve(std::format("a{}b", key("not_a_function(name)")), context) == "ab");
+    }
+}
+
+TEST_CASE("functions in key templates can read the loop scope", "[resolution]")
+{
+    Context context;
+    context.append("yo", make_context({{"hi", "A"}}));
+    context.append("yo", make_context({{"hi", "B"}}));
+    context.append("yo", make_context({{"hi", "C"}}));
+
+    SECTION("index reports the current iteration")
+    {
+        REQUIRE(resolve(loop("yo", key("index(yo)") + "\n"), context) == "0\n1\n2\n");
+    }
+
+    SECTION("a function argument resolves from the child context")
+    {
+        REQUIRE(resolve(loop("yo", key("to_lower(yo.hi)") + "\n"), context) == "a\nb\nc\n");
+    }
+}

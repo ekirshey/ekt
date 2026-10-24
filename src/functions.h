@@ -32,6 +32,7 @@ namespace ekt
         FuncReturnType type;
         bool bool_value;
         int number_value;
+        std::string literal_value;
     };
 
     struct FunctionDefinition

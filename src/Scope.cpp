@@ -7,6 +7,7 @@
 #include "Context.h"
 #include "utils.h"
 #include "ekt_defines.h"
+#include <functions.h>
 
 namespace ekt
 {

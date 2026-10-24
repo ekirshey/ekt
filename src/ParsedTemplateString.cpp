@@ -252,6 +252,21 @@ std::string ParsedTemplateString::resolve_key(Scope& scope, const TemplateVariab
         key = get_variable(var);
     }
 
+    auto func = is_function(key);
+    if(func != std::nullopt)
+    {
+        auto result = func->evaluate(scope);
+        switch(result.type)
+        {
+            case FuncReturnType::Bool:
+                return result.bool_value ? "true" : "false";
+            case FuncReturnType::Number:
+                return std::to_string(result.number_value);
+            case FuncReturnType::Literal:
+                return result.literal_value;
+        }
+    }
+
     return scope.get_value(key);
 }
 

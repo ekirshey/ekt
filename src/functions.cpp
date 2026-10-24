@@ -24,6 +24,14 @@ namespace ekt
             };
         }
 
+        FuncReturnVal ret_val(const std::string& val)
+        {
+            return FuncReturnVal{
+                .type = FuncReturnType::Literal,
+                .literal_value = val
+            };
+        }
+
         // Function definitions
         bool is_set(const std::vector<FuncArg>& args, const Scope& scope)
         {
@@ -108,6 +116,32 @@ namespace ekt
             return false;
         }
 
+        std::string to_lower(const std::vector<FuncArg>& args, const Scope& scope)
+        {
+            if (args.size() != 1 || args[0].type != FuncArgType::Literal)
+            {
+                return "";
+            }
+
+            auto node = literal_to_node(scope, args[0].literal_value);
+            if(node == std::nullopt)
+            {
+                return "";
+            }
+
+            switch(node->type)
+            {
+                case Type::Literal:
+                    return utils::to_lower(node->literal_value);
+                case Type::Bool:
+                    return node->bool_value ? "true" : "false";
+                case Type::Number:
+                    return std::to_string(node->number_value);
+            }
+
+            return "";
+        }
+
         const FunctionDefinition is_set_def = {
             .arg_types = {FuncArgType::Literal},
             .impl = [](const std::vector<FuncArg>& args, const Scope& scope) {return ret_val(is_set(args, scope));}
@@ -128,11 +162,17 @@ namespace ekt
             .impl = [](const std::vector<FuncArg>& args, const Scope& scope) {return ret_val(if_any(args, scope));}
         };
 
+        const FunctionDefinition to_lower_def = {
+            .arg_types = {FuncArgType::Literal},
+            .impl = [](const std::vector<FuncArg>& args, const Scope& scope) {return ret_val(to_lower(args, scope));}
+        };
+
         std::unordered_map<std::string, FunctionDefinition> functions = {
             {"IS_SET", is_set_def},
             {"IS_ARRAY_EMPTY", is_arr_empty_def},
             {"INDEX", get_index_def},
             {"IF_ANY", if_any_def},
+            {"TO_LOWER", to_lower_def},
         };
     }
 
