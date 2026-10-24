@@ -1,69 +1,58 @@
 #include "evaluator.h"
+
 #include <functional>
 #include <list>
 #include <string>
 #include <string_view>
 #include "utils.h"
+#include "functions.h"
+#include "EvalNode.h"
 
 #include <iostream>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace ekt
 {
 namespace {
-    enum class Type
-    {
-        None,
-        Arg,
-        Op,
-        Literal,
-        Evaluated
-    };
 
-    enum class NewType
-    {
-        Bool,
-        Literal,
-        Op
-    };
-
-    enum class OpType
-    {
-        None,
-        Equal,
-        NotEqual,
-        Or,
-        And
-    };
-
-    struct Node
-    {
-        Type type;
-        OpType op_type;
-        std::string value;
-        bool evaluated_value = false;
-    };
-
-    struct Op
-    {
-        OpType type = OpType::None;
-        size_t length = 0;
-    };
+    std::unordered_set<char> op_chars = {'=', '!', '<', '>', '|', '&'};
 
     std::unordered_map<std::string, Op> ops = {
-      {"==", {.type = OpType::Equal, .length = 2}},
-      {"!=", {.type = OpType::NotEqual, .length = 2}},
-      {"||", {.type = OpType::Or, .length = 2}},
-      {"&&", {.type = OpType::And, .length = 2}},
+      // Equality
+      {"==", {.type = OpType::Equal, .length = 2, .precedence = 3, .num_args = 2, .required_types = static_cast<int>(Type::Primitive)}},
+      {"!=", {.type = OpType::NotEqual, .length = 2, .precedence = 3, .num_args = 2, .required_types = static_cast<int>(Type::Primitive)}},
+
+      // Comparisons
+      {"<", {.type = OpType::LessThan, .length = 2, .precedence = 3, .num_args = 2, .required_types = static_cast<int>(Type::Number)}},
+      {">", {.type = OpType::GreaterThan, .length = 2, .precedence = 3, .num_args = 2, .required_types = static_cast<int>(Type::Number)}},
+      {"<=", {.type = OpType::LessThanOrEqual, .length = 2, .precedence = 3, .num_args = 2, .required_types = static_cast<int>(Type::Number)}},
+      {">=", {.type = OpType::GreaterThanOrEqual, .length = 2, .precedence = 3, .num_args = 2, .required_types = static_cast<int>(Type::Number)}},
+
+      // Logical Ops
+      {"||", {.type = OpType::Or, .length = 2, .precedence = 2, .num_args = 2, .required_types = static_cast<int>(Type::Bool)}},
+      {"&&", {.type = OpType::And, .length = 2, .precedence = 2, .num_args = 2, .required_types = static_cast<int>(Type::Bool)}}
     };
 
-    std::optional<Node> create_arg(std::string_view pred_view, size_t start, size_t pos, const Scope& scope)
+    std::optional<EvalNode> create_token(std::string_view pred_view, size_t start, size_t pos, const Scope& scope)
     {
         std::string value;
         auto var = utils::trim(pred_view.substr(start, pos - start));
         if(var.empty())
         {
             return std::nullopt;
+        }
+        
+        auto func = is_function(var);
+        if(func != std::nullopt)
+        {
+            return EvalNode(func->evaluate(scope));
+        }
+
+        auto num = utils::to_int(var);
+        if (num)
+        {
+            return EvalNode(num.value());
         }
 
         if(var.front() == '"' && var.back() == '"')
@@ -75,42 +64,47 @@ namespace {
             value = scope.get_value(std::string(var));
         }
 
-        return Node{
-            .type = Type::Arg,
-            .value = value
-        };
-    }
-
-    void parse_predicate(const Scope& scope, const std::string_view& pred_view, std::list<Node>& nodes)
-    {
-        if(pred_view.empty())
+        // Convert string values to numbers if appropriate
+        num = utils::to_int(value);
+        if (num)
         {
-            return;
+            return EvalNode(num.value());
         }
 
+        return EvalNode(value);
+    }
+
+    void tokenize(const std::string_view& pred_view, const Scope& scope, std::vector<EvalNode>& tokens)
+    {
         size_t pos = 0;
         size_t current_var_start = 0;
         while(pos < pred_view.size())
         {
-            const auto op_str = std::string(pred_view.substr(pos, 2));
+            int end_op_pos = pos;
+
+            while(end_op_pos < pred_view.size() && op_chars.contains(pred_view[end_op_pos]))
+            {
+                end_op_pos++;
+            }
+
+            const auto op_str = std::string(pred_view.substr(pos, end_op_pos - pos));
             auto op_result = ops.find(op_str);
 
             if (op_result != ops.end())
             {
                 auto& op = op_result->second;
+
                 if (pos - current_var_start > 0)
                 {
-                    auto node = create_arg(pred_view, current_var_start, pos, scope);
-                    if(node != std::nullopt)
+                    auto arg_node = create_token(pred_view, current_var_start, pos, scope);
+                    if(arg_node != std::nullopt)
                     {
-                        nodes.push_back(*node);
+                        tokens.push_back(*arg_node);
                     }
                 }
 
-                nodes.push_back(Node{
-                    .type = Type::Op,
-                    .op_type = op.type
-                });
+                tokens.push_back(EvalNode(op));
+
                 pos += op.length;
                 current_var_start = pos;
             }
@@ -119,124 +113,166 @@ namespace {
             }
         }
 
-        if (pos - current_var_start <= 0)
+        if (pos - current_var_start > 0)
         {
-            return;
-        }
-        auto node = create_arg(pred_view, current_var_start, pos, scope);
-        if(node != std::nullopt)
-        {
-            nodes.push_back(*node);
+            auto node = create_token(pred_view, current_var_start, pos, scope);
+            if(node != std::nullopt)
+            {
+                tokens.push_back(*node);
+            }
         }
     }
 
-    bool can_perform_op(std::list<Node>::iterator& current, std::list<Node>::iterator& left, std::list<Node>::iterator& right, OpType type)
+    EvalNode create_tree(const std::vector<EvalNode>& tokens)
     {
-        switch (type) {
-            case OpType::None:
-                return true;
-            case OpType::Equal:
-            case OpType::NotEqual:
-                return (left->type == Type::Arg && right->type == Type::Arg);
-            case OpType::Or:
-            case OpType::And:
-                return (left->type == Type::Evaluated && right->type == Type::Evaluated);
+        if (tokens.empty())
+        {
+            return {};
         }
 
-        return true;
+        EvalNode root = tokens[0];
+        EvalNode* current = &root;
+        for(int i = 0; i < tokens.size(); i++)
+        {
+            auto token = tokens[i];
+
+            // Add non ops to the current node
+            if (is_primitive(token.type))
+            {
+                current->children.push_back(token);
+                continue;
+            }
+
+            if (current->type != Type::Op || token.op.precedence < current->op.precedence)
+            {
+                token.children.push_back(root);
+                root = token;
+                current = &root;
+            }
+            else
+            {
+                while(current->children.size() > 1)
+                {
+                    token.children.push_back(current->children.back());
+                    current->children.pop_back();
+                }
+                current->children.push_back(token);
+                current = &current->children[current->children.size() - 1];
+            }
+        }
+
+        return root;
     }
 
-    void perform_op(std::list<Node>& nodes, std::list<Node>::iterator& current, std::list<Node>::iterator& left, std::list<Node>::iterator& right, OpType type)
+    std::expected<void, std::string> resolve_tree(EvalNode& node)
     {
+        if(node.type != Type::Op)
+        {
+            return {};
+        }
+
+        for (auto& n : node.children)
+        {
+            auto result = resolve_tree(n);
+            if (!result.has_value())
+            {
+                return std::unexpected(result.error());
+            }
+        }
+
+        if (node.children.size() != node.op.num_args)
+        {
+            return std::unexpected("Invalid argument count");
+        }
+
+        Type prev_type = Type::None;
+        for(auto& c : node.children)
+        {
+            if ((static_cast<int>(c.type) & node.op.required_types) == 0)
+            {
+                return std::unexpected("Incorrect types");
+            }
+
+            if(prev_type == Type::None)
+            {
+                prev_type = c.type;
+            }
+            else if(prev_type != c.type)
+            {
+                return std::unexpected("Args must be of the same type");
+            }
+        }
+
         bool eval = false;
-        switch (type) {
-            case OpType::None:
-                return;
+        switch(node.op.type)
+        {
             case OpType::Equal:
-                eval = left->value == right->value;
+            {
+                eval = node.children[0] == node.children[1];
                 break;
+            }
             case OpType::NotEqual:
-                eval = left->value != right->value;
+            {
+                eval = node.children[0] != node.children[1];
                 break;
+            }
             case OpType::Or:
-                eval = left->evaluated_value || right->evaluated_value;
+            {
+                eval = node.children[0] || node.children[1];
                 break;
+            }
             case OpType::And:
-                eval = left->evaluated_value && right->evaluated_value;
+            {
+                eval = node.children[0] && node.children[1];
                 break;
+            }
+            case OpType::GreaterThan:
+            {
+                eval = node.children[0] > node.children[1];
+                break;
+            }
+            case OpType::GreaterThanOrEqual:
+            {
+                eval = node.children[0] >= node.children[1];
+                break;
+            }
+            case OpType::LessThan:
+            {
+                eval = node.children[0] < node.children[1];
+                break;
+            }
+            case OpType::LessThanOrEqual:
+            {
+                eval = node.children[0] <= node.children[1];
+                break;
+            }
         }
 
-        left->type = Type::Evaluated;
-        left->evaluated_value = eval;
-        nodes.erase(current);
-        nodes.erase(right);
-        current = std::next(left);
+        node.type = Type::Bool;
+        node.bool_value = eval;
+
+        return {};
     }
+
 }
-
-
-/*
-Proper way is a tree
-
-bool,string_literal
-
-                
-
-
-*/
 
 bool evaluate_condition(const Scope& scope, const std::string& predicate)
 {
-    std::list<Node> nodes;
-    parse_predicate(scope, predicate, nodes);
-
-    auto current = nodes.begin();
-    int size = nodes.size();
-    while(!nodes.empty())
+    std::vector<EvalNode> nodes;
+    tokenize(predicate, scope, nodes);
+    auto tree = create_tree(nodes);
+    if (tree.type == Type::None)
     {
-        if(nodes.size() == 1 && current->type == Type::Evaluated)
-        {
-            return current->evaluated_value;
-        }
-
-        if(current != nodes.end() && current->type == Type::Op)
-        {
-            if (current == nodes.begin() || current == nodes.end() || std::next(current) == nodes.end())
-            {
-                // EKTODO error
-                return false;
-            }
-
-            auto left = std::prev(current);
-            auto right = std::next(current);
-            if(can_perform_op(current, left, right, current->op_type))
-            {
-                perform_op(nodes, current, left, right, current->op_type);
-            }
-        }
-
-        if (current == nodes.end())
-        {
-            // Nothing was removed and it's an infinite loop
-            if (size == nodes.size())
-            {
-                return false;
-            }
-            size = nodes.size();
-            current = nodes.begin();
-        }
-        else
-        {
-            current++;
-        }
+        return false;
     }
 
-    return false;
-}
+    auto result = resolve_tree(tree);
+    if (!result.has_value())
+    {
+        return false;
+    }
 
-bool is_function(const std::string& predicate)
-{
-    return false;
+    return tree.bool_value;
 }
 
 }

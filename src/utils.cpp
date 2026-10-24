@@ -3,6 +3,7 @@
 #include "ekt_defines.h"
 #include <algorithm>
 #include <unordered_map>
+#include <charconv>
 
 namespace ekt
 {
@@ -64,6 +65,17 @@ std::optional<std::size_t> utils::find_template_end(std::string_view str, std::s
     }
 
     return end;
+}
+
+std::optional<int> utils::to_int(std::string_view sv)
+{
+    int value = 0;
+    auto [ptr, ec] = std::from_chars(sv.data(), sv.data() + sv.size(), value);
+    if(ec != std::errc{} || ptr != sv.data() + sv.size())
+    {
+        return std::nullopt; // not a number, out of range, or trailing characters
+    }
+    return value;
 }
 
 }

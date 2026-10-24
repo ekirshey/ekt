@@ -21,8 +21,15 @@ namespace
         context.set("A", "true");
         context.set("B", "false");
         context.set("C", "true");
+        context.set("NUM", "1");
+        context.set("BIG_NUM", "100");
         context.set("NAME", "erik");
         context.set("OTHER_NAME", "erik");
+
+        Context item;
+        item.set("VALUE", "1");
+        context.append("ITEMS", item);
+        context.append("ITEMS", item);
         return context;
     }
 
@@ -33,6 +40,40 @@ namespace
         scope.set_root_context(&context);
         return evaluate_condition(scope, predicate);
     }
+}
+
+TEST_CASE("number comparisons", "[evaluator]")
+{
+    REQUIRE(evaluate("NUM == 1"));
+    REQUIRE_FALSE(evaluate("NUM == \"yo\""));
+    REQUIRE(evaluate("NUM == \"1\""));
+    REQUIRE(evaluate("NUM < 100"));
+    REQUIRE(evaluate("NUM <= 1"));
+    REQUIRE(evaluate("BIG_NUM > NUM"));
+    REQUIRE_FALSE(evaluate("BIG_NUM < NUM"));
+    REQUIRE(evaluate("BIG_NUM >= 100"));
+}
+
+TEST_CASE("is_array_empty evaluates to false if array is not empty", "[evaluator]")
+{
+    REQUIRE_FALSE(evaluate("is_array_empty(ITEMS)"));
+    REQUIRE(evaluate("is_array_empty(sdfdsf)"));
+    REQUIRE(evaluate("is_array_empty(A)"));
+    REQUIRE_FALSE(evaluate("is_array_empty(items)"));
+    REQUIRE(evaluate("is_array_empty(ITEMS) || is_array_empty(sdfdsf)"));
+    REQUIRE_FALSE(evaluate("is_array_empty(ITEMS) && is_array_empty(sdfdsf)"));
+    REQUIRE(evaluate("is_array_empty(ITEMS) || A == \"true\""));
+    REQUIRE_FALSE(evaluate("is_array_empty(ITEMS) && A == \"true\""));
+}
+
+TEST_CASE("is_set evaluates to true if a value exists", "[evaluator]")
+{
+    REQUIRE(evaluate("is_set(A)"));
+    REQUIRE_FALSE(evaluate("is_set(sdfdsf)"));
+    REQUIRE(evaluate("is_set(sdfdsf) || is_set(A)"));
+    REQUIRE_FALSE(evaluate("is_set(sdfdsf) && is_set(A)"));
+    REQUIRE(evaluate("is_set(sdfdsf) || A == \"true\""));
+    REQUIRE_FALSE(evaluate("is_set(sdfdsf) && A == \"true\""));
 }
 
 TEST_CASE("== compares a variable to a literal", "[evaluator]")

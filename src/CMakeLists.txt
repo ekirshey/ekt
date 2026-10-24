@@ -3,6 +3,10 @@ set(EKT_LIB_SOURCE
     Context.h
     evaluator.cpp
     evaluator.h
+    EvalNode.h
+    EvalNode.cpp
+    functions.cpp
+    functions.h
     Scope.cpp
     Scope.h
     utils.cpp

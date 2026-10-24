@@ -83,6 +83,13 @@ std::span<const Context> Context::get_array(const std::string& key) const
 
 bool Context::is_valid_key(const std::string& key)
 {
+    auto num = utils::to_int(key);
+    // No number keys
+    if (num)
+    {
+        return false;
+    }
+
     if (key.contains('(') ||
         key.contains(')') ||
         key.contains('=') ||
