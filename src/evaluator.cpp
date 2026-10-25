@@ -231,6 +231,10 @@ namespace {
                 eval = !node.children[0];
                 break;
             }
+            case OpType::None:
+            case OpType::OpenParen:
+            case OpType::CloseParen:
+                break;
         }
 
         node.type = Type::Bool;

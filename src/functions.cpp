@@ -137,6 +137,8 @@ namespace ekt
                     return node->bool_value ? "true" : "false";
                 case Type::Number:
                     return std::to_string(node->number_value);
+                default:
+                    break;
             }
 
             return "";

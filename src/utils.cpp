@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <charconv>
 #include <ranges>
+#include <vector>
 
 namespace ekt
 {

@@ -48,6 +48,10 @@ namespace ekt
                 type = Type::Number;
                 number_value = val.number_value;
                 break;
+            case FuncReturnType::Literal:
+                type = Type::Literal;
+                literal_value = val.literal_value;
+                break;
         }
     }
 
