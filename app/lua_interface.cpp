@@ -9,7 +9,7 @@
 
 #include "lua_template.h"
 #include "Context.h"
-#include "utils.h"
+#include "ekcore/strings.h"
 #include "lua_resolver.h"
 
 namespace fs = std::filesystem;
@@ -129,7 +129,7 @@ void LuaInterface::build(LuaResolver& ekt)
         sol::no_constructor,
         "get", [](const Context& context, const std::string& key) -> std::optional<std::string>
         {
-            auto upper_case_key = utils::to_upper(key);
+            auto upper_case_key = ekcore::to_upper(key);
             if (!context.contains(upper_case_key))
             {
                 return std::nullopt;
@@ -163,7 +163,7 @@ void LuaInterface::build(LuaResolver& ekt)
         add_user_input_var, [](LuaTemplate& t, const std::string& key, const std::string& default_value)
         {
             LuaTemplateInputVariable input;
-            input.name = utils::to_upper(key);
+            input.name = ekcore::to_upper(key);
             if (!default_value.empty())
             {
                 input.default_value = default_value;
@@ -173,7 +173,7 @@ void LuaInterface::build(LuaResolver& ekt)
 
         add_function_var, [](LuaTemplate& t, const std::string& key, sol::protected_function command)
         {
-            t.functions[utils::to_upper(key)] =
+            t.functions[ekcore::to_upper(key)] =
                 [command](Context& context) -> std::expected<std::string, std::string>
                 {
                     auto result = command(context);

@@ -21,38 +21,6 @@ namespace
     }
 }
 
-TEST_CASE("trim removes leading and trailing whitespace", "[utils]")
-{
-    REQUIRE(utils::trim("  test  ") == "test");
-    REQUIRE(utils::trim("\t\r\ntest\r\n\t") == "test");
-    REQUIRE(utils::trim("   test") == "test");
-    REQUIRE(utils::trim("test   ") == "test");
-}
-
-TEST_CASE("trim keeps inner whitespace", "[utils]")
-{
-    REQUIRE(utils::trim("  a b\tc  ") == "a b\tc");
-}
-
-TEST_CASE("trim leaves strings without outer whitespace unchanged", "[utils]")
-{
-    REQUIRE(utils::trim("test") == "test");
-    REQUIRE(utils::trim("t") == "t");
-}
-
-TEST_CASE("trim of empty or all whitespace strings is empty", "[utils]")
-{
-    REQUIRE(utils::trim("").empty());
-    REQUIRE(utils::trim(" \t\r\n\f\v").empty());
-}
-
-TEST_CASE("trim returns a view into the input", "[utils]")
-{
-    const std::string input = "  test  ";
-    const auto trimmed = utils::trim(input);
-    REQUIRE(trimmed.data() == input.data() + 2);
-}
-
 TEST_CASE("an empty template string returns nullopt", "[utils]")
 {
     REQUIRE(utils::find_template_end("", 0, key_template_start, key_template_end) == std::nullopt);
@@ -156,4 +124,20 @@ TEST_CASE("conditional template with nested conditional returns correct end posi
     const std::string body = conditional("nested", "body");
     const size_t target = conditional_template_start.size() + label.size() + pred_delimiter.size() + body.size();
     REQUIRE(utils::find_template_end(conditional(label, body), 0, conditional_template_start, conditional_template_end) == target);
+}
+
+TEST_CASE("loop template with nested loop returns correct end position", "[utils]")
+{
+    const std::string body = loop_template_start + "inner" + loop_template_end + " after";
+    const std::string template_str = loop_template_start + body + loop_template_end;
+    const size_t target = loop_template_start.size() + body.size();
+    REQUIRE(utils::find_template_end(template_str, 0, loop_template_start, loop_template_end) == target);
+}
+
+TEST_CASE("nested templates step past the given end delimiter, not the key end delimiter", "[utils]")
+{
+    // Delimiters shorter than key_template_end would skip characters if the wrong length were used
+    REQUIRE(utils::find_template_end("(())", 0, "(", ")") == 3);
+    REQUIRE(utils::find_template_end("(()())", 0, "(", ")") == 5);
+    REQUIRE(utils::find_template_end("((x)y)z", 0, "(", ")") == 5);
 }

@@ -6,6 +6,7 @@
 #include "ParsedTemplateString.h"
 #include "evaluator.h"
 #include "utils.h"
+#include "ekcore/strings.h"
 #include "ekt_defines.h"
 
 #include <iostream>
@@ -101,7 +102,7 @@ std::string ParsedTemplateString::get_variable(const TemplateVariable& location)
 {
     const int start = location.start + key_template_start.length();
     const int length = location.end - key_template_end.length() - start;
-    return utils::to_upper(std::string(m_content.data() + start, length));
+    return ekcore::to_upper(std::string_view(m_content).substr(start, length));
 }
 
 std::string ParsedTemplateString::resolve_impl(Scope& scope) const

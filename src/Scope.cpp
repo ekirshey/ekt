@@ -6,6 +6,7 @@
 #include <vector>
 #include "Context.h"
 #include "utils.h"
+#include "ekcore/strings.h"
 #include "ekt_defines.h"
 #include <functions.h>
 
@@ -52,23 +53,23 @@ void Scope::set_root_context(const Context* context)
 
 void Scope::add_child_context(const std::string& parent_name, const Context* context)
 {
-    m_child_contexts[utils::to_upper(parent_name)].push_back(context);
+    m_child_contexts[ekcore::to_upper(parent_name)].push_back(context);
 }
 
 int Scope::get_num_child_contexts(const std::string& parent_name) const
 {
-    const auto key = utils::to_upper(parent_name);
+    const auto key = ekcore::to_upper(parent_name);
     if (!m_child_contexts.contains(key))
     {
         return 0;
     }
 
-    return m_child_contexts.at(utils::to_upper(key)).size();
+    return m_child_contexts.at(ekcore::to_upper(key)).size();
 }
 
 void Scope::clear_child_contexts(const std::string& parent_name)
 {
-    m_child_contexts[utils::to_upper(parent_name)].clear();
+    m_child_contexts[ekcore::to_upper(parent_name)].clear();
 }
 
 }

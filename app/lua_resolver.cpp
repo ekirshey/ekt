@@ -1,30 +1,13 @@
 #include "lua_resolver.h"
-#include <fstream>
 #include <ranges>
 #include "ParsedTemplateString.h"
-#include "utils.h"
+#include "ekcore/filesystem.h"
 
 namespace ekt
 {
-    
+
 namespace
 {
-    bool get_input_file_content(const std::string& input_file, std::string& contents)
-    {
-        std::ifstream file(input_file);
-        if (!file)
-        {
-            return false;
-        }
-
-       contents = std::string(
-            (std::istreambuf_iterator<char>(file)),
-            std::istreambuf_iterator<char>()
-        );
-
-       return true;
-    }
-
     struct ParsedTemplateComponent
     {
         ParsedTemplateString input;
@@ -33,13 +16,13 @@ namespace
 
     std::expected<void, std::string> create_parsed_component(LuaTemplateComponent& component, ParsedTemplateComponent& p)
     {
-        std::string file_contents;
-        if(!get_input_file_content(component.input_file, file_contents))
+        const auto file_contents = ekcore::read_file(component.input_file);
+        if(!file_contents)
         {
             return std::unexpected("Could not open input file: " + component.input_file);
         }
 
-        auto input_result = ParsedTemplateString::parse(file_contents);
+        auto input_result = ParsedTemplateString::parse(*file_contents);
         if(!input_result)
         {
             return std::unexpected("Failed to parse input contents for: " + component.input_file);

@@ -6,13 +6,13 @@
 #include <functional>
 #include <unordered_map>
 #include "Context.h"
-#include "string_hash.h"
+#include "ekcore/strings.h"
 
 namespace ekt
 {
 
 using LuaTemplateFunction = std::function<std::expected<std::string, std::string>(Context&)>;
-using LuaTemplateFunctionMap = std::unordered_map<std::string, LuaTemplateFunction, string_hash, std::equal_to<>>;
+using LuaTemplateFunctionMap = std::unordered_map<std::string, LuaTemplateFunction, ekcore::string_hash, std::equal_to<>>;
 
 struct LuaTemplateInputVariable
 {

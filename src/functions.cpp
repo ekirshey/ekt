@@ -1,8 +1,8 @@
 #include "functions.h"
 #include <string_view>
-#include <ranges>
 
 #include "utils.h"
+#include "ekcore/strings.h"
 #include <evaluator.h>
 
 namespace ekt
@@ -132,7 +132,7 @@ namespace ekt
             switch(node->type)
             {
                 case Type::Literal:
-                    return utils::to_lower(node->literal_value);
+                    return ekcore::to_lower(node->literal_value);
                 case Type::Bool:
                     return node->bool_value ? "true" : "false";
                 case Type::Number:
@@ -180,8 +180,7 @@ namespace ekt
 
     std::optional<Function> is_function(const std::string_view& predicate)
     {
-        auto split = std::views::split(predicate, std::string_view("("))
-            | std::ranges::to<std::vector<std::string>>();
+        auto split = ekcore::split(predicate, "(");
 
         if (split.size() != 2)
         {
@@ -195,7 +194,7 @@ namespace ekt
 
         auto args_str = split[1].substr(0, split[1].size() -1 );
 
-        auto func_it = functions.find(utils::to_upper(split[0]));
+        auto func_it = functions.find(ekcore::to_upper(split[0]));
         if (func_it == functions.end())
         {
             return std::nullopt;
@@ -217,8 +216,7 @@ namespace ekt
         }
         else
         {
-            auto arg_split = std::views::split(split[1].substr(0, split[1].size() - 1 ), std::string_view(","))
-                | std::ranges::to<std::vector<std::string>>();
+            auto arg_split = ekcore::split(args_str, ",");
 
             if (arg_split.size() != func.arg_types.size())
             {
@@ -230,7 +228,7 @@ namespace ekt
             int i = 0;
             for(auto& a : func.arg_types)
             {
-                auto trimmed = utils::trim(arg_split[i]);
+                auto trimmed = ekcore::trim(arg_split[i]);
                 switch(a)
                 {
                     case FuncArgType::Literal:
@@ -243,7 +241,7 @@ namespace ekt
                     }
                     case FuncArgType::Number:
                     {
-                        auto num = utils::to_int(trimmed);
+                        auto num = ekcore::to_int(trimmed);
                         if (num)
                         {
                             new_func.args.push_back(FuncArg{

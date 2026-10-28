@@ -1,7 +1,7 @@
 #include "Context.h"
 #include <vector>
 
-#include "utils.h"
+#include "ekcore/strings.h"
 #include <ekt_defines.h>
 
 namespace ekt
@@ -9,7 +9,7 @@ namespace ekt
 
 bool Context::contains(const std::string& key) const
 {
-    return m_data.contains(utils::to_upper(key));
+    return m_data.contains(ekcore::to_upper(key));
 }
 
 // What behavior on key collision?
@@ -37,7 +37,7 @@ void Context::concat(const Context& context, ResolveMode mode)
 
 bool Context::set(const std::string& key, const std::string& value)
 {
-    const auto upper_key = utils::to_upper(key);
+    const auto upper_key = ekcore::to_upper(key);
     if(!is_valid_key(upper_key))
     {
         return false;
@@ -49,7 +49,7 @@ bool Context::set(const std::string& key, const std::string& value)
 
 bool Context::append(const std::string& key, const Context& value)
 {
-    const auto upper_key = utils::to_upper(key);
+    const auto upper_key = ekcore::to_upper(key);
     if(!is_valid_key(upper_key))
     {
         return false;
@@ -70,7 +70,7 @@ bool Context::append(const std::string& key, const Context& value)
 
 std::string Context::get_value(const std::string& key) const
 {
-    auto upper_key = utils::to_upper(key);
+    auto upper_key = ekcore::to_upper(key);
     if (!m_data.contains(upper_key))
     {
         return "";
@@ -81,7 +81,7 @@ std::string Context::get_value(const std::string& key) const
 
 std::span<const Context> Context::get_array(const std::string& key) const
 {
-    auto upper_key = utils::to_upper(key);
+    auto upper_key = ekcore::to_upper(key);
     if (!m_data.contains(upper_key))
     {
         return {};
@@ -91,7 +91,7 @@ std::span<const Context> Context::get_array(const std::string& key) const
 
 bool Context::is_valid_key(const std::string& key)
 {
-    auto num = utils::to_int(key);
+    auto num = ekcore::to_int(key);
     // No number keys
     if (num)
     {

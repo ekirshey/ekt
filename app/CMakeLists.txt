@@ -22,8 +22,10 @@ target_include_directories(ekt_lua PUBLIC
     ${SOL2_INCLUDE_DIRS}
 )
 
+# ekcore is public because lua_template.h uses ekcore::string_hash
 target_link_libraries(ekt_lua PUBLIC
     ekt::ekt_lib
+    ekcore::ekcore_lib
     PkgConfig::LuaJIT
 )
 

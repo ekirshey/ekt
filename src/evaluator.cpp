@@ -4,7 +4,7 @@
 #include <list>
 #include <string>
 #include <string_view>
-#include "utils.h"
+#include "ekcore/strings.h"
 #include "functions.h"
 #include "EvalNode.h"
 
@@ -39,7 +39,7 @@ namespace {
     std::optional<EvalNode> create_token(std::string_view pred_view, size_t start, size_t pos, const Scope& scope)
     {
         std::string value;
-        auto var = utils::trim(pred_view.substr(start, pos - start));
+        auto var = ekcore::trim(pred_view.substr(start, pos - start));
         if(var.empty())
         {
             return std::nullopt;
@@ -272,7 +272,7 @@ std::optional<EvalNode> literal_to_node(const Scope& scope, std::string_view str
     }
 
     std::string value;
-    auto num = utils::to_int(str);
+    auto num = ekcore::to_int(str);
     if (num)
     {
         return EvalNode(num.value());
@@ -287,7 +287,7 @@ std::optional<EvalNode> literal_to_node(const Scope& scope, std::string_view str
         value = scope.get_value(std::string(str));
     }
 
-    num = utils::to_int(value);
+    num = ekcore::to_int(value);
     if (num)
     {
         return EvalNode(num.value());
