@@ -46,6 +46,8 @@ build-*/
 
 # CMake generated files
 CMakeFiles/
+# Personal presets; the shared ones live in CMakePresets.json
+CMakeUserPresets.json
 CMakeCache.txt
 cmake_install.cmake
 Makefile

@@ -2,43 +2,77 @@
   "version": 6,
   "configurePresets": [
     {
-      "name": "mac_debug",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/out/build/debug/",
-      "installDir": "${sourceDir}/out/install/debug/",
+      "name": "base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "installDir": "${sourceDir}/out/install/${presetName}",
       "cacheVariables": {
-        "CMAKE_C_COMPILER": "clang",
-        "CMAKE_CXX_COMPILER": "clang++",
         "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "CMAKE_BUILD_TYPE": "Debug"
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       }
     },
     {
-      "name": "nix_debug",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/out/build/debug/",
-      "installDir": "${sourceDir}/out/install/debug/",
-      "cacheVariables": {
-        "CMAKE_C_COMPILER": "clang",
-        "CMAKE_CXX_COMPILER": "clang++",
-        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "CMAKE_BUILD_TYPE": "Debug"
-      }
-    },
-    {
-      "name": "win_debug",
+      "name": "win",
+      "inherits": "base",
       "generator": "Visual Studio 17 2022",
-      "binaryDir": "${sourceDir}/out/build/debug/",
-      "installDir": "${sourceDir}/out/install/debug/",
-      "cacheVariables": {
-        "CMAKE_C_COMPILER": "cl.exe",
-        "CMAKE_CXX_COMPILER": "cl.exe",
-        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "CMAKE_BUILD_TYPE": "Debug"
-      }
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
+    },
+    {
+      "name": "mac",
+      "inherits": "base",
+      "generator": "Ninja Multi-Config",
+      "cacheVariables": { "CMAKE_CXX_COMPILER": "clang++" },
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin" }
+    },
+    {
+      "name": "nix",
+      "inherits": "base",
+      "generator": "Ninja Multi-Config",
+      "cacheVariables": { "CMAKE_CXX_COMPILER": "clang++" },
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
+    }
+  ],
+  "buildPresets": [
+    { "name": "win_debug",   "configurePreset": "win", "configuration": "Debug" },
+    { "name": "win_release", "configurePreset": "win", "configuration": "Release" },
+    { "name": "mac_debug",   "configurePreset": "mac", "configuration": "Debug" },
+    { "name": "mac_release", "configurePreset": "mac", "configuration": "Release" },
+    { "name": "nix_debug",   "configurePreset": "nix", "configuration": "Debug" },
+    { "name": "nix_release", "configurePreset": "nix", "configuration": "Release" }
+  ],
+  "testPresets": [
+    { "name": "test_base", "hidden": true, "output": { "outputOnFailure": true } },
+    { "name": "win_debug",   "inherits": "test_base", "configurePreset": "win", "configuration": "Debug" },
+    { "name": "win_release", "inherits": "test_base", "configurePreset": "win", "configuration": "Release" },
+    { "name": "mac_debug",   "inherits": "test_base", "configurePreset": "mac", "configuration": "Debug" },
+    { "name": "mac_release", "inherits": "test_base", "configurePreset": "mac", "configuration": "Release" },
+    { "name": "nix_debug",   "inherits": "test_base", "configurePreset": "nix", "configuration": "Debug" },
+    { "name": "nix_release", "inherits": "test_base", "configurePreset": "nix", "configuration": "Release" }
+  ],
+  "workflowPresets": [
+    {
+      "name": "win_test",
+      "steps": [
+        { "type": "configure", "name": "win" },
+        { "type": "build", "name": "win_debug" },
+        { "type": "test", "name": "win_debug" }
+      ]
+    },
+    {
+      "name": "mac_test",
+      "steps": [
+        { "type": "configure", "name": "mac" },
+        { "type": "build", "name": "mac_debug" },
+        { "type": "test", "name": "mac_debug" }
+      ]
+    },
+    {
+      "name": "nix_test",
+      "steps": [
+        { "type": "configure", "name": "nix" },
+        { "type": "build", "name": "nix_debug" },
+        { "type": "test", "name": "nix_debug" }
+      ]
     }
   ]
 }
